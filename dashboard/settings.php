@@ -431,7 +431,8 @@ $password_analysis = analyzePasswordStrength($current_user);
 
 // Get system statistics
 $stats = [];
-$stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring");
+$members_table = $database->getMembersTable();
+$stmt = $db->query("SELECT COUNT(*) as total FROM " . $members_table);
 $stats['total_members'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
 $stmt = $db->query("SELECT COUNT(*) as total FROM events");
