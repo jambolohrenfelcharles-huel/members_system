@@ -9,12 +9,13 @@ if (!isset($_SESSION['user_id'])) {
 
 $database = new Database();
 $db = $database->getConnection();
+$members_table = $database->getMembersTable();
 
 // Handle delete action (admin only)
 if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
     if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
         $id = $_GET['id'];
-        $stmt = $db->prepare("DELETE FROM membership_monitoring WHERE id = ?");
+        $stmt = $db->prepare("DELETE FROM " . $members_table . " WHERE id = ?");
         $stmt->execute([$id]);
         header('Location: index.php?deleted=1');
         exit();
@@ -35,7 +36,12 @@ $statusFilter = isset($_GET['status']) ? $_GET['status'] : '';
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'created_desc';
 
 // Auto-update member status based on renewal date
-$db->query("UPDATE membership_monitoring SET status = 'inactive' WHERE renewal_date < CURDATE() AND status = 'active'");
+$db_type = $_ENV['DB_TYPE'] ?? 'mysql';
+if ($db_type === 'postgresql') {
+    $db->query("UPDATE " . $members_table . " SET status = 'inactive' WHERE renewal_date < CURRENT_DATE AND status = 'active'");
+} else {
+    $db->query("UPDATE " . $members_table . " SET status = 'inactive' WHERE renewal_date < CURDATE() AND status = 'active'");
+}
 
 $conditions = [];
 $params = [];
@@ -67,20 +73,20 @@ if ($sort === 'region_asc') {
 }
 
 // Get total count
-$countQuery = "SELECT COUNT(*) as total FROM membership_monitoring $whereClause";
+$countQuery = "SELECT COUNT(*) as total FROM " . $members_table . " $whereClause";
 $countStmt = $db->prepare($countQuery);
 $countStmt->execute($params);
 $totalRecords = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 $totalPages = ceil($totalRecords / $limit);
 
 // Get members
-$query = "SELECT * FROM membership_monitoring $whereClause $orderBy LIMIT $limit OFFSET $offset";
+$query = "SELECT * FROM " . $members_table . " $whereClause $orderBy LIMIT $limit OFFSET $offset";
 $stmt = $db->prepare($query);
 $stmt->execute($params);
 $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch distinct regions for filter
-$regionsStmt = $db->query("SELECT DISTINCT region FROM membership_monitoring WHERE region IS NOT NULL AND region <> '' ORDER BY region ASC");
+$regionsStmt = $db->query("SELECT DISTINCT region FROM " . $members_table . " WHERE region IS NOT NULL AND region <> '' ORDER BY region ASC");
 $regions = $regionsStmt->fetchAll(PDO::FETCH_COLUMN);
 
 $memberNotification = '';
