@@ -16,6 +16,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$members_table = $database->getMembersTable();
 
 $errors = [];
 $success = '';
@@ -108,7 +109,7 @@ if ($_POST) {
     
     // Check if email already exists
     if (!empty($email) && empty($errors)) {
-        $checkEmail = $db->prepare("SELECT id FROM membership_monitoring WHERE email = ?");
+        $checkEmail = $db->prepare("SELECT id FROM " . $members_table . " WHERE email = ?");
         $checkEmail->execute([$email]);
         if ($checkEmail->fetch(PDO::FETCH_ASSOC)) {
             $errors[] = "Email address is already registered";
@@ -147,7 +148,7 @@ if ($_POST) {
         // Generate QR code
         $qr_code = 'MEMBER_' . time() . '_' . rand(1000, 9999);
         
-        $query = "INSERT INTO membership_monitoring (user_id, name, email, club_position, home_address, contact_number, philhealth_number, pagibig_number, tin_number, birthdate, height, weight, blood_type, religion, emergency_contact_person, emergency_contact_number, club_affiliation, region, qr_code, image_path, renewal_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $query = "INSERT INTO " . $members_table . " (user_id, name, email, club_position, home_address, contact_number, philhealth_number, pagibig_number, tin_number, birthdate, height, weight, blood_type, religion, emergency_contact_person, emergency_contact_number, club_affiliation, region, qr_code, image_path, renewal_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $db->prepare($query);
         $result = $stmt->execute([
