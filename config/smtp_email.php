@@ -109,11 +109,11 @@ class SimpleSMTP {
             $protocol = 'ssl://';
         }
         
-        $this->socket = stream_socket_client(
+        $this->socket = @stream_socket_client(
             $protocol . "{$this->host}:{$this->port}",
             $errno,
             $errstr,
-            30,
+            10, // Reduced timeout from 30 to 10 seconds
             STREAM_CLIENT_CONNECT,
             $context
         );

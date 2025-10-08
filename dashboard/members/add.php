@@ -1,4 +1,7 @@
 <?php
+// Start output buffering to prevent headers already sent errors
+ob_start();
+
 session_start();
 require_once '../../config/database.php';
 require_once '../../config/email_config.php';
@@ -296,8 +299,20 @@ if ($_POST) {
                         if (is_file($src)) { @copy($src, $dest); @chmod($dest, 0644); }
                     }
 
-                    // Attempt to email credentials (best-effort)
-                    try { sendCredentialsEmail($email, $username, $plainPassword); } catch (Throwable $e) { /* ignore */ }
+                    // Attempt to email credentials (best-effort) - suppress warnings
+                    $old_error_reporting = error_reporting(0);
+                    $old_display_errors = ini_set('display_errors', 0);
+                    
+                    try { 
+                        sendCredentialsEmail($email, $username, $plainPassword); 
+                    } catch (Throwable $e) { 
+                        // Log error but don't display it
+                        error_log("Email sending failed: " . $e->getMessage());
+                    }
+                    
+                    // Restore error reporting
+                    error_reporting($old_error_reporting);
+                    ini_set('display_errors', $old_display_errors);
                 }
                 else {
                     // Existing user: also set avatar from uploaded member photo if available
@@ -320,6 +335,8 @@ if ($_POST) {
                 }
             }
 
+            // Clean output buffer and redirect
+            ob_clean();
             header('Location: index.php?added=1');
             exit();
         } else {
