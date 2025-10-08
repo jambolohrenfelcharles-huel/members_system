@@ -9,9 +9,10 @@ if (!isset($_SESSION['user_id'])) {
 
 $database = new Database();
 $db = $database->getConnection();
+$members_table = $database->getMembersTable();
 
 $id = $_GET['id'] ?? 0;
-$stmt = $db->prepare("SELECT * FROM membership_monitoring WHERE id = ?");
+$stmt = $db->prepare("SELECT * FROM " . $members_table . " WHERE id = ?");
 $stmt->execute([$id]);
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 

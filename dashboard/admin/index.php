@@ -15,6 +15,7 @@ if ($_SESSION['role'] !== 'admin') {
 
 $database = new Database();
 $db = $database->getConnection();
+$members_table = $database->getMembersTable();
 
 // Handle user management actions
 if (isset($_GET['action'])) {
