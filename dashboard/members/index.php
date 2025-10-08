@@ -212,17 +212,9 @@ if (isset($_GET['deleted'])) {
                                                 <td><?php echo $member['id']; ?></td>
                                                 <td>
                                                     <div class="d-flex align-items-center">
-                                                        <?php if (!empty($member['image_path'])): ?>
-                                                            <?php 
-                                                            // Fix image path - make it relative to web root
-                                                            $image_url = '/uploads/' . $member['image_path'];
-                                                            ?>
-                                                            <img src="<?php echo htmlspecialchars($image_url); ?>" class="avatar-sm rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;" alt="Profile Photo">
-                                                        <?php else: ?>
-                                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
-                                                                <?php echo strtoupper(substr($member['name'], 0, 1)); ?>
-                                                            </div>
-                                                        <?php endif; ?>
+                                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                            <?php echo strtoupper(substr($member['name'], 0, 1)); ?>
+                                                        </div>
                                                         <div>
                                                             <div class="fw-bold"><?php echo htmlspecialchars($member['name']); ?></div>
                                                             <small class="text-muted"><?php echo htmlspecialchars($member['club_affiliation']); ?></small>
