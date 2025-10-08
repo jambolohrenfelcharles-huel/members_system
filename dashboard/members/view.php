@@ -198,12 +198,38 @@ if (!$member) {
                                 <h5 class="mb-0"><i class="fas fa-image me-2"></i>Profile Photo</h5>
                             </div>
                             <div class="card-body text-center">
-                                <?php if (!empty($member['image_path'])): ?>
-                                    <?php 
-                                    // Fix image path - make it relative to web root
-                                    $image_url = '/uploads/' . $member['image_path'];
-                                    ?>
-                                    <img src="<?php echo htmlspecialchars($image_url); ?>" class="img-fluid rounded" style="max-height: 320px; object-fit: cover;" alt="Profile Photo">
+                                <?php 
+                                $imagePath = '';
+                                $imageExists = false;
+                                
+                                if (!empty($member['image_path'])) {
+                                    $imagePath = '../../uploads/members/' . htmlspecialchars($member['image_path']);
+                                    $fullPath = realpath(__DIR__ . '/../../uploads/members/' . $member['image_path']);
+                                    $imageExists = $fullPath && file_exists($fullPath);
+                                }
+                                ?>
+                                
+                                <?php if (!empty($member['image_path']) && $imageExists): ?>
+                                    <img src="<?php echo $imagePath; ?>" 
+                                         class="img-fluid rounded shadow-sm" 
+                                         style="max-height: 320px; object-fit: cover; border: 3px solid #e9ecef;" 
+                                         alt="Member Photo"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <div class="bg-light p-4 rounded" style="display: none;">
+                                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                                        <p class="mt-2 text-muted">Image not found</p>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-file-image me-1"></i><?php echo htmlspecialchars($member['image_path']); ?>
+                                        </small>
+                                    </div>
+                                <?php elseif (!empty($member['image_path']) && !$imageExists): ?>
+                                    <div class="bg-warning p-4 rounded">
+                                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                                        <p class="mt-2 text-muted">Image file not found</p>
+                                        <small class="text-muted"><?php echo htmlspecialchars($member['image_path']); ?></small>
+                                    </div>
                                 <?php else: ?>
                                     <div class="bg-light p-4 rounded">
                                         <i class="fas fa-user fa-3x text-muted"></i>
