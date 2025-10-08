@@ -145,14 +145,16 @@ if ($_POST) {
     }
 
     if (empty($errors)) {
-        // Generate QR code
+        // Generate member ID and QR code
+        $member_id = 'M' . date('Y') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
         $qr_code = 'MEMBER_' . time() . '_' . rand(1000, 9999);
         
-        $query = "INSERT INTO " . $members_table . " (user_id, name, email, club_position, home_address, contact_number, philhealth_number, pagibig_number, tin_number, birthdate, height, weight, blood_type, religion, emergency_contact_person, emergency_contact_number, club_affiliation, region, qr_code, image_path, renewal_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $query = "INSERT INTO " . $members_table . " (user_id, member_id, name, email, club_position, home_address, contact_number, philhealth_number, pagibig_number, tin_number, birthdate, height, weight, blood_type, religion, emergency_contact_person, emergency_contact_number, club_affiliation, region, qr_code, image_path, renewal_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $db->prepare($query);
         $result = $stmt->execute([
             $_SESSION['user_id'],
+            $member_id,
             $name,
             $email,
             $club_position,
