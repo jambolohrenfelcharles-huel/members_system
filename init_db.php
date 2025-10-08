@@ -10,9 +10,8 @@ try {
     $db = new Database();
     $pdo = $db->getConnection();
     
-    // Read the appropriate SQL file based on database type
-    $db_type = $_ENV['DB_TYPE'] ?? 'mysql';
-    $sqlFile = ($db_type === 'postgresql') ? 'db/members_system_postgresql.sql' : 'db/members_system.sql';
+    // Always use MySQL SQL file
+    $sqlFile = 'db/members_system.sql';
     
     if (!file_exists($sqlFile)) {
         throw new Exception("SQL file not found: $sqlFile");
