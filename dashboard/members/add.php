@@ -128,7 +128,7 @@ if ($_POST) {
             switch ($file['error']) {
                 case UPLOAD_ERR_INI_SIZE:
                 case UPLOAD_ERR_FORM_SIZE:
-                    $errors[] = "File too large - server limit exceeded. Please contact administrator to increase upload limits.";
+                    $errors[] = "File too large. Current server limit: " . ini_get('upload_max_filesize') . ". Please try a smaller file or contact administrator to increase limits.";
                     break;
                 case UPLOAD_ERR_PARTIAL:
                     $errors[] = "File upload was incomplete";
@@ -156,8 +156,9 @@ if ($_POST) {
             if (!$tmp || !is_uploaded_file($tmp)) {
                 $errors[] = "Invalid upload - file not properly uploaded";
             }
-            // Check file size - No limit (server will handle actual limits)
-            // Note: Server-side limits (upload_max_filesize, post_max_size) will still apply
+            // Check file size - Server will handle actual limits
+            // We'll let the server's upload_max_filesize and post_max_size handle the limits
+            // and provide better error messages if limits are exceeded
             // Check file extension
             elseif (!in_array(strtolower(pathinfo($originalName, PATHINFO_EXTENSION)), $allowedExtensions)) {
                 $errors[] = "Unsupported file type. Please upload JPG, PNG, GIF, or WebP images only.";
