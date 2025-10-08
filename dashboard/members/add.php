@@ -116,30 +116,91 @@ if ($_POST) {
         }
     }
     
-    // Handle profile photo upload (optional)
+    // Handle profile photo upload (optional) - Improved validation
     if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $allowedMime = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
-        $tmp = $_FILES['profile_photo']['tmp_name'] ?? '';
-        $mime = $tmp ? (function_exists('mime_content_type') ? mime_content_type($tmp) : $_FILES['profile_photo']['type']) : '';
-        $size = $_FILES['profile_photo']['size'] ?? 0;
-        if (!$tmp || !is_uploaded_file($tmp)) {
-            $errors[] = "Invalid upload";
-        } elseif (!isset($allowedMime[$mime])) {
-            $errors[] = "Unsupported image type";
-        } elseif ($size > 5 * 1024 * 1024) { // 5MB
-            $errors[] = "Image too large (max 5MB)";
-        } else {
-            $ext = $allowedMime[$mime];
-            $uploadDirFs = realpath(__DIR__ . '/..' . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'members';
-            if (!is_dir($uploadDirFs)) {
-                @mkdir($uploadDirFs, 0775, true);
+        $file = $_FILES['profile_photo'];
+        
+        // Check for upload errors
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            switch ($file['error']) {
+                case UPLOAD_ERR_INI_SIZE:
+                case UPLOAD_ERR_FORM_SIZE:
+                    $errors[] = "File too large (max 5MB)";
+                    break;
+                case UPLOAD_ERR_PARTIAL:
+                    $errors[] = "File upload was incomplete";
+                    break;
+                case UPLOAD_ERR_NO_TMP_DIR:
+                    $errors[] = "Temporary directory not available";
+                    break;
+                case UPLOAD_ERR_CANT_WRITE:
+                    $errors[] = "Cannot write file to disk";
+                    break;
+                default:
+                    $errors[] = "Upload error occurred";
+                    break;
             }
-            $basename = 'member_' . ($_SESSION['user_id'] ?? '0') . '_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
-            $destFs = $uploadDirFs . DIRECTORY_SEPARATOR . $basename;
-            if (!@move_uploaded_file($tmp, $destFs)) {
-                $errors[] = "Failed to save uploaded image";
-            } else {
-                $image_path = 'members/' . $basename;
+        } else {
+            // Validate file
+            $allowedMime = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            
+            $tmp = $file['tmp_name'];
+            $size = $file['size'];
+            $originalName = $file['name'];
+            
+            // Check if file was uploaded
+            if (!$tmp || !is_uploaded_file($tmp)) {
+                $errors[] = "Invalid upload - file not properly uploaded";
+            }
+            // Check file size (5MB max)
+            elseif ($size > 5 * 1024 * 1024) {
+                $errors[] = "Image too large (max 5MB)";
+            }
+            // Check file extension
+            elseif (!in_array(strtolower(pathinfo($originalName, PATHINFO_EXTENSION)), $allowedExtensions)) {
+                $errors[] = "Unsupported file type. Please upload JPG, PNG, GIF, or WebP images only.";
+            }
+            // Try to get MIME type
+            else {
+                $mime = '';
+                if (function_exists('mime_content_type')) {
+                    $mime = mime_content_type($tmp);
+                } elseif (function_exists('finfo_file')) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mime = finfo_file($finfo, $tmp);
+                    finfo_close($finfo);
+                } else {
+                    $mime = $file['type'];
+                }
+                
+                // Validate MIME type if we can detect it
+                if ($mime && !isset($allowedMime[$mime])) {
+                    $errors[] = "Invalid file type detected. Please upload a valid image.";
+                }
+                // Try to save the file
+                else {
+                    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+                    $uploadDirFs = realpath(__DIR__ . '/..' . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'members';
+                    
+                    // Create upload directory if it doesn't exist
+                    if (!is_dir($uploadDirFs)) {
+                        if (!@mkdir($uploadDirFs, 0775, true)) {
+                            $errors[] = "Cannot create upload directory";
+                        }
+                    }
+                    
+                    if (empty($errors)) {
+                        $basename = 'member_' . ($_SESSION['user_id'] ?? '0') . '_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
+                        $destFs = $uploadDirFs . DIRECTORY_SEPARATOR . $basename;
+                        
+                        if (!@move_uploaded_file($tmp, $destFs)) {
+                            $errors[] = "Failed to save uploaded image. Please try again.";
+                        } else {
+                            $image_path = 'members/' . $basename;
+                        }
+                    }
+                }
             }
         }
     }
