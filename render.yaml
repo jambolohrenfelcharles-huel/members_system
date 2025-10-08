@@ -1,8 +1,39 @@
 services:
   - type: web
-    name: SmartApp
+    name: smartapp-web
     env: docker
     plan: free
-    buildCommand: ""
-    startCommand: ""
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./dockerfile
+    envVars:
+      - key: DB_HOST
+        value: ${DB_HOST}
+      - key: DB_USERNAME
+        value: ${DB_USERNAME}
+      - key: DB_PASSWORD
+        value: ${DB_PASSWORD}
+      - key: DB_NAME
+        value: ${DB_NAME}
+      - key: SMTP_HOST
+        value: ${SMTP_HOST}
+      - key: SMTP_PORT
+        value: ${SMTP_PORT}
+      - key: SMTP_USERNAME
+        value: ${SMTP_USERNAME}
+      - key: SMTP_PASSWORD
+        value: ${SMTP_PASSWORD}
+      - key: SMTP_FROM_EMAIL
+        value: ${SMTP_FROM_EMAIL}
+      - key: SMTP_FROM_NAME
+        value: ${SMTP_FROM_NAME}
+
+  - type: pserv
+    name: smartapp-db
+    plan: free
+    env: postgresql
+    envVars:
+      - key: POSTGRES_DB
+        value: members_system
+      - key: POSTGRES_USER
+        value: smartapp_user
+      - key: POSTGRES_PASSWORD
+        value: ${POSTGRES_PASSWORD}
