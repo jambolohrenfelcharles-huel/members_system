@@ -31,7 +31,7 @@ $stats['upcoming_events'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Today's attendance - use appropriate date function
 if ($db_type === 'postgresql') {
-    $stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE date::date = CURRENT_DATE");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 } else {
     $stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
 }
