@@ -1,0 +1,38 @@
+# Backup files
+*.zip
+backups/
+dashboard/backups/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Large uploads (if any)
+uploads/large_files/
+
+# Cache files
+cache/
+*.cache
