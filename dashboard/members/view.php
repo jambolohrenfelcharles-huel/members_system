@@ -199,7 +199,11 @@ if (!$member) {
                             </div>
                             <div class="card-body text-center">
                                 <?php if (!empty($member['image_path'])): ?>
-                                    <img src="../../uploads/<?php echo htmlspecialchars($member['image_path']); ?>" class="img-fluid rounded" style="max-height: 320px; object-fit: cover;">
+                                    <?php 
+                                    // Fix image path - make it relative to web root
+                                    $image_url = '/uploads/' . $member['image_path'];
+                                    ?>
+                                    <img src="<?php echo htmlspecialchars($image_url); ?>" class="img-fluid rounded" style="max-height: 320px; object-fit: cover;" alt="Profile Photo">
                                 <?php else: ?>
                                     <div class="bg-light p-4 rounded">
                                         <i class="fas fa-user fa-3x text-muted"></i>
