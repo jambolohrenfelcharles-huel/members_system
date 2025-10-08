@@ -1,31 +1,35 @@
-<?php
-// SmartApp Main Entry Point
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Check if we're in a health check
-if (isset($_GET['health'])) {
-    header('Content-Type: application/json');
-    echo json_encode(['status' => 'ok', 'message' => 'SmartApp is running']);
-    exit();
-}
-
-// Simple error handling
-try {
-    // Check if login file exists
-    if (file_exists('auth/login.php')) {
-        header('Location: auth/login.php');
-        exit();
-    } else {
-        // Fallback if login doesn't exist
-        echo "<h1>SmartApp</h1>";
-        echo "<p>Welcome to SmartApp!</p>";
-        echo "<p><a href='debug.php'>Debug Information</a></p>";
-        echo "<p><a href='test.php'>Test Page</a></p>";
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmartApp</title>
+</head>
+<body>
+    <h1>SmartApp is Running!</h1>
+    <p>PHP Version: <?php echo PHP_VERSION; ?></p>
+    <p>Current Time: <?php echo date('Y-m-d H:i:s'); ?></p>
+    
+    <h2>Test Links:</h2>
+    <ul>
+        <li><a href="simple_test.php">Simple PHP Test</a></li>
+        <li><a href="debug.php">Debug Information</a></li>
+        <li><a href="test.php">Test Page</a></li>
+        <li><a href="health.php">Health Check</a></li>
+    </ul>
+    
+    <h2>Database Test:</h2>
+    <?php
+    try {
+        require_once 'config/database.php';
+        $db = new Database();
+        $conn = $db->getConnection();
+        if ($conn) {
+            echo "<p style='color: green;'>✅ Database connection successful!</p>";
+        } else {
+            echo "<p style='color: red;'>❌ Database connection failed</p>";
+        }
+    } catch (Exception $e) {
+        echo "<p style='color: red;'>❌ Database error: " . htmlspecialchars($e->getMessage()) . "</p>";
     }
-} catch (Exception $e) {
-    echo "<h1>Error</h1>";
-    echo "<p>Error: " . htmlspecialchars($e->getMessage()) . "</p>";
-    echo "<p><a href='debug.php'>Debug Information</a></p>";
-}
-?>
+    ?>
+</body>
+</html>
