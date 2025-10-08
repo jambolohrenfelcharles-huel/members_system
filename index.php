@@ -10,11 +10,22 @@ if (isset($_GET['health'])) {
     exit();
 }
 
-// Redirect to login page
+// Simple error handling
 try {
-    header('Location: auth/login.php');
-    exit();
+    // Check if login file exists
+    if (file_exists('auth/login.php')) {
+        header('Location: auth/login.php');
+        exit();
+    } else {
+        // Fallback if login doesn't exist
+        echo "<h1>SmartApp</h1>";
+        echo "<p>Welcome to SmartApp!</p>";
+        echo "<p><a href='debug.php'>Debug Information</a></p>";
+        echo "<p><a href='test.php'>Test Page</a></p>";
+    }
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "<h1>Error</h1>";
+    echo "<p>Error: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p><a href='debug.php'>Debug Information</a></p>";
 }
 ?>
