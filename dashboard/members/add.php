@@ -119,89 +119,60 @@ if ($_POST) {
         }
     }
     
-    // Handle profile photo upload (optional) - Improved validation
+    // Handle profile photo upload (optional) - Using dashboard profile upload method
     if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $file = $_FILES['profile_photo'];
+        $fileTmp = $_FILES['profile_photo']['tmp_name'];
+        $fileSize = (int)$_FILES['profile_photo']['size'];
         
-        // Check for upload errors
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            switch ($file['error']) {
-                case UPLOAD_ERR_INI_SIZE:
-                case UPLOAD_ERR_FORM_SIZE:
-                    $errors[] = "File too large. Current server limit: " . ini_get('upload_max_filesize') . ". Please try a smaller file or contact administrator to increase limits.";
-                    break;
-                case UPLOAD_ERR_PARTIAL:
-                    $errors[] = "File upload was incomplete";
-                    break;
-                case UPLOAD_ERR_NO_TMP_DIR:
-                    $errors[] = "Temporary directory not available";
-                    break;
-                case UPLOAD_ERR_CANT_WRITE:
-                    $errors[] = "Cannot write file to disk";
-                    break;
-                default:
-                    $errors[] = "Upload error occurred";
-                    break;
-            }
+        if (!is_uploaded_file($fileTmp)) {
+            $errors[] = 'Invalid upload source.';
+        } elseif ($fileSize <= 0 || $fileSize > 500 * 1024 * 1024) {
+            $errors[] = 'Image must be between 1 byte and 500MB.';
         } else {
-            // Validate file
-            $allowedMime = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif', 'image/webp' => 'webp'];
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-            
-            $tmp = $file['tmp_name'];
-            $size = $file['size'];
-            $originalName = $file['name'];
-            
-            // Check if file was uploaded
-            if (!$tmp || !is_uploaded_file($tmp)) {
-                $errors[] = "Invalid upload - file not properly uploaded";
+            // Use the same extension detection as dashboard profile
+            $ext = null;
+            if (class_exists('finfo')) {
+                $fi = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $fi->file($fileTmp) ?: '';
+                $map = [
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp',
+                ];
+                if (isset($map[$mime])) {
+                    $ext = $map[$mime];
+                }
             }
-            // Check file size - Server will handle actual limits
-            // We'll let the server's upload_max_filesize and post_max_size handle the limits
-            // and provide better error messages if limits are exceeded
-            // Check file extension
-            elseif (!in_array(strtolower(pathinfo($originalName, PATHINFO_EXTENSION)), $allowedExtensions)) {
-                $errors[] = "Unsupported file type. Please upload JPG, PNG, GIF, or WebP images only.";
+            
+            if (!$ext) {
+                $info = @getimagesize($fileTmp);
+                if (is_array($info) && isset($info[2])) {
+                    switch ($info[2]) {
+                        case IMAGETYPE_JPEG: $ext = 'jpg'; break;
+                        case IMAGETYPE_PNG: $ext = 'png'; break;
+                        case IMAGETYPE_GIF: $ext = 'gif'; break;
+                        case IMAGETYPE_WEBP: $ext = 'webp'; break;
+                    }
+                }
             }
-            // Try to get MIME type
-            else {
-                $mime = '';
-                if (function_exists('mime_content_type')) {
-                    $mime = mime_content_type($tmp);
-                } elseif (function_exists('finfo_file')) {
-                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                    $mime = finfo_file($finfo, $tmp);
-                    finfo_close($finfo);
-                } else {
-                    $mime = $file['type'];
+            
+            if (!$ext) {
+                $errors[] = 'Only JPG, PNG, GIF, or WEBP images are allowed.';
+            } else {
+                $uploadDirFs = realpath(__DIR__ . '/..' . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'members';
+                if (!is_dir($uploadDirFs)) {
+                    @mkdir($uploadDirFs, 0775, true);
                 }
                 
-                // Validate MIME type if we can detect it
-                if ($mime && !isset($allowedMime[$mime])) {
-                    $errors[] = "Invalid file type detected. Please upload a valid image.";
-                }
-                // Try to save the file
-                else {
-                    $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-                    $uploadDirFs = realpath(__DIR__ . '/..' . '/..') . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'members';
-                    
-                    // Create upload directory if it doesn't exist
-                    if (!is_dir($uploadDirFs)) {
-                        if (!@mkdir($uploadDirFs, 0775, true)) {
-                            $errors[] = "Cannot create upload directory";
-                        }
-                    }
-                    
-                    if (empty($errors)) {
-                        $basename = 'member_' . ($_SESSION['user_id'] ?? '0') . '_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
-                        $destFs = $uploadDirFs . DIRECTORY_SEPARATOR . $basename;
-                        
-                        if (!@move_uploaded_file($tmp, $destFs)) {
-                            $errors[] = "Failed to save uploaded image. Please try again.";
-                        } else {
-                            $image_path = 'members/' . $basename;
-                        }
-                    }
+                $basename = 'member_' . ($_SESSION['user_id'] ?? '0') . '_' . time() . '_' . mt_rand(1000,9999) . '.' . $ext;
+                $destFs = $uploadDirFs . DIRECTORY_SEPARATOR . $basename;
+                
+                if (!@move_uploaded_file($fileTmp, $destFs)) {
+                    $errors[] = 'Failed to save uploaded image.';
+                } else {
+                    @chmod($destFs, 0644);
+                    $image_path = 'members/' . $basename;
                 }
             }
         }
