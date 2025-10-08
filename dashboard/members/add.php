@@ -107,9 +107,9 @@ if ($_POST) {
     if (empty($emergency_contact_number)) $errors[] = "Emergency contact number is required";
     if (empty($region)) $errors[] = "Region is required";
     
-    // Check if email already exists
+    // Check if email already exists (only if email is provided and not empty)
     if (!empty($email) && empty($errors)) {
-        $checkEmail = $db->prepare("SELECT id FROM " . $members_table . " WHERE email = ?");
+        $checkEmail = $db->prepare("SELECT id FROM " . $members_table . " WHERE email = ? AND email IS NOT NULL AND email != ''");
         $checkEmail->execute([$email]);
         if ($checkEmail->fetch(PDO::FETCH_ASSOC)) {
             $errors[] = "Email address is already registered";
@@ -125,7 +125,7 @@ if ($_POST) {
             switch ($file['error']) {
                 case UPLOAD_ERR_INI_SIZE:
                 case UPLOAD_ERR_FORM_SIZE:
-                    $errors[] = "File too large (max 5MB)";
+                    $errors[] = "File too large (max 500MB)";
                     break;
                 case UPLOAD_ERR_PARTIAL:
                     $errors[] = "File upload was incomplete";
@@ -153,9 +153,9 @@ if ($_POST) {
             if (!$tmp || !is_uploaded_file($tmp)) {
                 $errors[] = "Invalid upload - file not properly uploaded";
             }
-            // Check file size (5MB max)
-            elseif ($size > 5 * 1024 * 1024) {
-                $errors[] = "Image too large (max 5MB)";
+            // Check file size (500MB max)
+            elseif ($size > 500 * 1024 * 1024) {
+                $errors[] = "Image too large (max 500MB)";
             }
             // Check file extension
             elseif (!in_array(strtolower(pathinfo($originalName, PATHINFO_EXTENSION)), $allowedExtensions)) {
