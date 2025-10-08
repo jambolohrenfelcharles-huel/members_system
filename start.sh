@@ -1,16 +1,8 @@
 #!/bin/bash
 
-# Startup script for Render deployment
+# Simple startup script for Render deployment
 echo "Starting SmartApp..."
 
-# Wait for database to be ready
-echo "Waiting for database connection..."
-sleep 10
-
-# Initialize database if needed
-echo "Initializing database..."
-php init_db.php
-
-# Start Apache
+# Start Apache directly
 echo "Starting Apache server..."
-apache2-foreground
+exec apache2-foreground

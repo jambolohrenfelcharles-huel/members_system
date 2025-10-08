@@ -1,0 +1,15 @@
+# Email Configuration Template
+# Copy these settings to your Render environment variables
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password-here
+SMTP_FROM_EMAIL=your-email@gmail.com
+SMTP_FROM_NAME=SmartApp
+
+# Instructions:
+# 1. Replace 'your-email@gmail.com' with your actual Gmail address
+# 2. Replace 'your-app-password-here' with your Gmail app password
+# 3. Add these as environment variables in your Render web service
+# 4. Test using: php test_email_config.php

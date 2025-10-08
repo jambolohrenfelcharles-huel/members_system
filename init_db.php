@@ -1,4 +1,4 @@
-<?php
+    f<?php
 /**
  * Database initialization script for Render deployment
  * This script will create the database tables from the SQL file
