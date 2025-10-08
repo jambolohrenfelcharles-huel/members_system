@@ -6,7 +6,7 @@ services:
     dockerfilePath: ./dockerfile
     envVars:
       - key: DB_TYPE
-        value: mysql
+        value: postgresql
       - key: DB_HOST
         value: ${DB_HOST}
       - key: DB_USERNAME
@@ -29,15 +29,13 @@ services:
         value: ${SMTP_FROM_NAME}
 
   - type: pserv
-    name: smartapp-mysql-db
+    name: smartapp-db
     plan: free
-    env: mysql
+    env: postgresql
     envVars:
-      - key: MYSQL_DATABASE
+      - key: POSTGRES_DB
         value: members_system
-      - key: MYSQL_USER
+      - key: POSTGRES_USER
         value: smartapp_user
-      - key: MYSQL_PASSWORD
-        value: ${MYSQL_PASSWORD}
-      - key: MYSQL_ROOT_PASSWORD
-        value: ${MYSQL_ROOT_PASSWORD}
+      - key: POSTGRES_PASSWORD
+        value: ${POSTGRES_PASSWORD}

@@ -1,7 +1,7 @@
 # SmartApp Deployment Guide for Render
 
 ## Overview
-This guide will help you deploy your SmartApp to Render.com using Docker and MySQL.
+This guide will help you deploy your SmartApp to Render.com using Docker and PostgreSQL. Your app will use MySQL locally and PostgreSQL on Render.
 
 ## Prerequisites
 1. GitHub repository with your SmartApp code
@@ -15,15 +15,14 @@ Your code is already pushed to: `https://github.com/jambolohrenfelcharles-huel/m
 
 ### 2. Create Render Services
 
-#### A. Create MySQL Database
+#### A. Create PostgreSQL Database
 1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Click "New +" → "MySQL"
+2. Click "New +" → "PostgreSQL"
 3. Configure:
-   - **Name**: `smartapp-mysql-db`
+   - **Name**: `smartapp-db`
    - **Database**: `members_system`
    - **User**: `smartapp_user`
    - **Password**: Generate a strong password (save this!)
-   - **Root Password**: Generate a strong root password (save this!)
    - **Plan**: Free
 
 #### B. Create Web Service
@@ -41,11 +40,11 @@ In your web service, add these environment variables:
 
 #### Database Configuration
 ```
-DB_TYPE=mysql
-DB_HOST=[Your MySQL Internal Database URL]
+DB_TYPE=postgresql
+DB_HOST=[Your PostgreSQL Internal Database URL]
 DB_NAME=members_system
 DB_USERNAME=smartapp_user
-DB_PASSWORD=[Your MySQL Password]
+DB_PASSWORD=[Your PostgreSQL Password]
 ```
 
 #### Email Configuration (Optional)
@@ -60,11 +59,11 @@ SMTP_FROM_NAME=SmartApp
 
 ### 4. Get Database Connection Details
 
-1. Go to your MySQL service in Render
+1. Go to your PostgreSQL service in Render
 2. Copy the **Internal Database URL**
 3. Extract the connection details:
    - Host: The hostname from the URL
-   - Port: Usually 3306
+   - Port: Usually 5432
    - Database: `members_system`
    - Username: `smartapp_user`
    - Password: The one you set
@@ -95,9 +94,10 @@ SmartApp/
 ├── start.sh                # Startup script
 ├── init_db.php             # Database initialization
 ├── config/
-│   └── database.php        # Database connection (updated for MySQL)
+│   └── database.php        # Database connection (supports both MySQL and PostgreSQL)
 ├── db/
-│   └── members_system.sql           # MySQL database schema
+│   ├── members_system.sql           # MySQL version (for local development)
+│   └── members_system_postgresql.sql # PostgreSQL version (for Render)
 └── ... (rest of your app)
 ```
 
@@ -107,7 +107,7 @@ SmartApp/
 
 1. **Database Connection Failed**
    - Check environment variables
-   - Ensure MySQL service is running
+   - Ensure PostgreSQL service is running
    - Verify internal database URL
 
 2. **Build Failed**

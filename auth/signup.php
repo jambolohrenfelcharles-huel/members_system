@@ -17,8 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Username must not contain spaces.';
     }
 
-    // Check if email exists in membership_monitoring table
-    $query = "SELECT id FROM membership_monitoring WHERE email = ?";
+    // Check if email exists in members table (use correct table based on database type)
+    $members_table = $database->getMembersTable();
+    $query = "SELECT id FROM $members_table WHERE email = ?";
     $stmt = $db->prepare($query);
     $stmt->execute([$email]);
     $member = $stmt->fetch(PDO::FETCH_ASSOC);

@@ -15,8 +15,10 @@ $db = $database->getConnection();
 // Get dashboard statistics
 $stats = [];
 
-// Total members
-$stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring");
+// Total members - check which table exists
+$db_type = $_ENV['DB_TYPE'] ?? 'mysql';
+$members_table = ($db_type === 'postgresql') ? 'members' : 'membership_monitoring';
+$stmt = $db->query("SELECT COUNT(*) as total FROM $members_table");
 $stats['total_members'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Total events
@@ -27,8 +29,12 @@ $stats['total_events'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 $stmt = $db->query("SELECT COUNT(*) as total FROM events WHERE status = 'upcoming'");
 $stats['upcoming_events'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-// Today's attendance
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
+// Today's attendance - use appropriate date function
+if ($db_type === 'postgresql') {
+    $stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE date::date = CURRENT_DATE");
+} else {
+    $stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
+}
 $stats['today_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Recent announcements
@@ -76,12 +82,20 @@ for ($m = 1; $m <= 12; $m++) {
     $label = DateTime::createFromFormat('!m', (string)$m)->format('M') . ' ' . $selectedYear;
     $monthKey = sprintf('%04d-%02d', $selectedYear, $m);
     $monthLabels[] = $label;
-    // Members by created_at month
-    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM membership_monitoring WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+    // Members by created_at month - use appropriate table and date function
+    if ($db_type === 'postgresql') {
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM members WHERE TO_CHAR(created_at, 'YYYY-MM') = ?");
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM membership_monitoring WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+    }
     $stmt->execute([$monthKey]);
     $memberTrend[] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
-    // Events by event_date month
-    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE DATE_FORMAT(event_date, '%Y-%m') = ?");
+    // Events by event_date month - use appropriate date function
+    if ($db_type === 'postgresql') {
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE TO_CHAR(event_date, 'YYYY-MM') = ?");
+    } else {
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE DATE_FORMAT(event_date, '%Y-%m') = ?");
+    }
     $stmt->execute([$monthKey]);
     $eventTrend[] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 }
@@ -315,7 +329,7 @@ for ($m = 1; $m <= 12; $m++) {
                                 <?php foreach ($recent_news_feed as $news): ?>
                                     <div class="mb-3 border-bottom pb-2" data-created-at="<?php echo strtotime($news['created_at']); ?>">
                                         <h6 class="mb-1"><?php echo htmlspecialchars($news['title']); ?></h6>
-                                        <p class="small"><?php echo nl2br(htmlspecialchars($news['description'])); ?></p>
+                                        <p class="small"><?php echo nl2br(htmlspecialchars($news['description'] ?? $news['content'] ?? '')); ?></p>
                                         <?php if ($news['media_type'] === 'image'): ?>
                                     <img src="../uploads/<?php echo htmlspecialchars($news['media_path']); ?>" 
                                         class="img-fluid rounded mb-2 d-block mx-auto w-100" 
