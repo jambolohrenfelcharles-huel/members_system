@@ -151,9 +151,12 @@ if (!$event) {
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i>Attendance QR Code</h6>
                                         <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download</button>
-                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" class="btn btn-sm btn-success ms-2" onclick="directDownload(); return false;">
-                                            <i class="fas fa-download me-1"></i>Instant Download
+                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" class="btn btn-sm btn-success ms-2">
+                                            <i class="fas fa-download me-1"></i>Direct Download
                                         </a>
+                                        <button onclick="window.open('download_qr.php?event_id=<?php echo (int)$event['id']; ?>', '_blank')" class="btn btn-sm btn-info ms-2">
+                                            <i class="fas fa-external-link-alt me-1"></i>Open in New Tab
+                                        </button>
                                     </div>
                                     <div class="card-body text-center">
                                         <div id="eventQr" class="d-inline-block bg-white p-3 rounded" style="min-height: 200px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
@@ -491,22 +494,130 @@ if (!$event) {
         }
         
         function directDownload() {
-            // Instant download - no delays, no checks, no fallbacks
             var eventId = <?php echo (int)$event['id']; ?>;
             var filename = 'event_' + eventId + '_qr.png';
-            var downloadUrl = 'download_qr.php?event_id=' + eventId;
             
-            // Create and click download link immediately
-            var a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = filename;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            console.log('Starting download for event ' + eventId);
             
-            // Show success message immediately
-            showDownloadSuccess(filename);
+            // Method 1: Try direct download link first
+            try {
+                var downloadUrl = 'download_qr.php?event_id=' + eventId + '&_t=' + Date.now();
+                var a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                console.log('Direct download initiated');
+                showDownloadSuccess(filename);
+                return;
+            } catch (error) {
+                console.error('Direct download failed:', error);
+            }
+            
+            // Method 2: Try fetch and blob download
+            try {
+                var downloadUrl = 'download_qr.php?event_id=' + eventId;
+                fetch(downloadUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        console.log('Fetch download completed');
+                        showDownloadSuccess(filename);
+                    })
+                    .catch(error => {
+                        console.error('Fetch download failed:', error);
+                        // Method 3: Try server QR image
+                        downloadServerQrImage();
+                    });
+            } catch (error) {
+                console.error('Fetch not supported:', error);
+                // Method 3: Try server QR image
+                downloadServerQrImage();
+            }
+        }
+        
+        function downloadServerQrImage() {
+            var eventId = <?php echo (int)$event['id']; ?>;
+            var filename = 'event_' + eventId + '_qr.png';
+            
+            try {
+                var serverQr = document.getElementById('serverQrCode');
+                if (serverQr && serverQr.src) {
+                    var a = document.createElement('a');
+                    a.href = serverQr.src;
+                    a.download = filename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    console.log('Server QR image download completed');
+                    showDownloadSuccess(filename);
+                    return;
+                }
+            } catch (error) {
+                console.error('Server QR image download failed:', error);
+            }
+            
+            // Method 4: Try client-side QR code
+            try {
+                var clientQr = document.getElementById('clientQrCode');
+                if (clientQr) {
+                    var img = clientQr.querySelector('img');
+                    var canvas = clientQr.querySelector('canvas');
+                    
+                    if (img && img.src) {
+                        var a = document.createElement('a');
+                        a.href = img.src;
+                        a.download = filename;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        console.log('Client QR image download completed');
+                        showDownloadSuccess(filename);
+                        return;
+                    } else if (canvas) {
+                        canvas.toBlob(function(blob) {
+                            if (blob) {
+                                var url = URL.createObjectURL(blob);
+                                var a = document.createElement('a');
+                                a.href = url;
+                                a.download = filename;
+                                a.style.display = 'none';
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                console.log('Canvas download completed');
+                                showDownloadSuccess(filename);
+                                return;
+                            }
+                        }, 'image/png');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Client QR download failed:', error);
+            }
+            
+            // Method 5: Final fallback - generate QR data
+            console.log('All download methods failed, generating QR data');
+            generateQrDataForDownload();
         }
         
         function downloadImage(src, filename) {

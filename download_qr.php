@@ -81,7 +81,7 @@ try {
     // Fetch QR code image from API with optimized settings
     $context = stream_context_create([
         'http' => [
-            'timeout' => 5, // Reduced timeout for faster response
+            'timeout' => 10, // Increased timeout for reliability
             'user_agent' => 'SmartApp QR Downloader',
             'method' => 'GET',
             'header' => [
@@ -94,7 +94,19 @@ try {
     $qrImage = file_get_contents($qrUrl, false, $context);
     
     if ($qrImage === false) {
-        throw new Exception('Failed to generate QR code');
+        // Try alternative QR code API
+        $altQrUrl = 'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=256';
+        $qrImage = file_get_contents($altQrUrl, false, $context);
+        
+        if ($qrImage === false) {
+            // Try Google Charts API as final fallback
+            $googleQrUrl = 'https://chart.googleapis.com/chart?chs=256x256&cht=qr&chl=' . urlencode($qrText);
+            $qrImage = file_get_contents($googleQrUrl, false, $context);
+            
+            if ($qrImage === false) {
+                throw new Exception('Failed to generate QR code from all APIs');
+            }
+        }
     }
     
     // Cache the QR code for future requests
