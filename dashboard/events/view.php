@@ -179,7 +179,7 @@ if (!$event) {
                                             // Test which API is accessible
                                             $testUrl = $qrServerUrl; // Default to QR Server
                                             ?>
-                                            <img id="serverQrCode" src="<?php echo $testUrl; ?>" alt="QR Code for Event <?php echo $event['id']; ?>" style="max-width: 192px; height: auto;" onerror="this.style.display='none'; document.getElementById('clientQrCode').style.display='block';" />
+                                            <img id="serverQrCode" src="<?php echo $testUrl; ?>" alt="QR Code for Event <?php echo $event['id']; ?>" style="max-width: 192px; height: auto;" onload="preloadDownloadVersions();" onerror="this.style.display='none'; document.getElementById('clientQrCode').style.display='block';" />
                                             <div id="clientQrCode" style="display: none;"></div>
                                             <div id="qrFallback" style="display: none; text-align: center; padding: 20px;">
                                                 <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border: 2px dashed #dee2e6;">
@@ -550,43 +550,72 @@ if (!$event) {
         
         function downloadImage(src, filename) {
             try {
-                // Method 1: Direct download (works on most browsers)
+                // Method 1: Fast direct download with cache busting
                 var a = document.createElement('a');
-                a.href = src;
+                a.href = src + (src.includes('?') ? '&' : '?') + '_t=' + Date.now();
                 a.download = filename;
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                console.log('Image downloaded successfully');
+                console.log('Fast image download completed');
                 
-                // Show success message
+                // Show success message immediately
                 showDownloadSuccess(filename);
                 
             } catch (error) {
-                console.error('Direct download failed:', error);
+                console.error('Fast download failed:', error);
                 
-                // Method 2: Open in new tab (fallback)
+                // Method 2: Fetch and download (modern browsers)
                 try {
-                    var newWindow = window.open(src, '_blank');
-                    if (newWindow) {
-                        console.log('Opened QR code in new tab for manual download');
-                        alert('QR code opened in new tab. Right-click and save as ' + filename);
-                    } else {
-                        throw new Error('Popup blocked');
-                    }
-                } catch (popupError) {
-                    console.error('Popup blocked:', popupError);
-                    
-                    // Method 3: Copy to clipboard (final fallback)
-                    copyQrDataToClipboard();
+                    fetch(src)
+                        .then(response => response.blob())
+                        .then(blob => {
+                            var url = URL.createObjectURL(blob);
+                            var a = document.createElement('a');
+                            a.href = url;
+                            a.download = filename;
+                            a.style.display = 'none';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            console.log('Fetch download completed');
+                            showDownloadSuccess(filename);
+                        })
+                        .catch(fetchError => {
+                            console.error('Fetch download failed:', fetchError);
+                            // Fallback to manual methods
+                            downloadImageFallback(src, filename);
+                        });
+                } catch (fetchError) {
+                    console.error('Fetch not supported:', fetchError);
+                    downloadImageFallback(src, filename);
                 }
+            }
+        }
+        
+        function downloadImageFallback(src, filename) {
+            try {
+                // Method 3: Open in new tab (fallback)
+                var newWindow = window.open(src, '_blank');
+                if (newWindow) {
+                    console.log('Opened QR code in new tab for manual download');
+                    alert('QR code opened in new tab. Right-click and save as ' + filename);
+                } else {
+                    throw new Error('Popup blocked');
+                }
+            } catch (popupError) {
+                console.error('Popup blocked:', popupError);
+                
+                // Method 4: Copy to clipboard (final fallback)
+                copyQrDataToClipboard();
             }
         }
         
         function downloadCanvas(canvas, filename) {
             try {
-                // Convert canvas to blob and download
+                // Fast canvas to blob conversion with optimized settings
                 canvas.toBlob(function(blob) {
                     if (blob) {
                         var url = URL.createObjectURL(blob);
@@ -598,19 +627,19 @@ if (!$event) {
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
-                        console.log('Canvas downloaded successfully');
+                        console.log('Fast canvas download completed');
                         showDownloadSuccess(filename);
                     } else {
                         throw new Error('Canvas blob creation failed');
                     }
-                }, 'image/png');
+                }, 'image/png', 0.9); // Optimized quality for faster processing
                 
             } catch (error) {
-                console.error('Canvas download failed:', error);
+                console.error('Fast canvas download failed:', error);
                 
-                // Fallback: Convert to data URL
+                // Fallback: Convert to data URL with optimization
                 try {
-                    var dataUrl = canvas.toDataURL('image/png');
+                    var dataUrl = canvas.toDataURL('image/png', 0.9); // Optimized quality
                     var a = document.createElement('a');
                     a.href = dataUrl;
                     a.download = filename;
@@ -618,10 +647,10 @@ if (!$event) {
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    console.log('Canvas downloaded via data URL');
+                    console.log('Canvas downloaded via optimized data URL');
                     showDownloadSuccess(filename);
                 } catch (dataUrlError) {
-                    console.error('Data URL download failed:', dataUrlError);
+                    console.error('Optimized data URL download failed:', dataUrlError);
                     copyQrDataToClipboard();
                 }
             }
@@ -632,18 +661,18 @@ if (!$event) {
                 var eventId = <?php echo (int)$event['id']; ?>;
                 var downloadUrl = 'download_qr.php?event_id=' + eventId;
                 
-                console.log('Attempting server-side download from:', downloadUrl);
+                console.log('Attempting fast server-side download from:', downloadUrl);
                 
-                // Method 1: Direct download link
+                // Method 1: Direct download link with cache busting
                 var a = document.createElement('a');
-                a.href = downloadUrl;
+                a.href = downloadUrl + '&_t=' + Date.now(); // Cache busting
                 a.download = 'event_' + eventId + '_qr.png';
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 
-                console.log('Server-side download initiated');
+                console.log('Fast server-side download initiated');
                 showDownloadSuccess('event_' + eventId + '_qr.png');
                 
             } catch (error) {
@@ -774,6 +803,36 @@ if (!$event) {
         function resetButton(btn, originalText) {
             btn.disabled = false;
             btn.innerHTML = originalText;
+        }
+        
+        function preloadDownloadVersions() {
+            // Preload different versions of QR code for faster downloads
+            var eventId = <?php echo (int)$event['id']; ?>;
+            var qrPayload = {
+                type: 'attendance',
+                event_id: eventId,
+                event_name: <?php echo json_encode($event['title']); ?>,
+                ts: Date.now()
+            };
+            var qrText = JSON.stringify(qrPayload);
+            
+            // Preload high-resolution version for download
+            var highResUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=' + encodeURIComponent(qrText);
+            var highResImg = new Image();
+            highResImg.src = highResUrl;
+            highResImg.onload = function() {
+                console.log('High-resolution QR code preloaded for fast download');
+            };
+            
+            // Preload download endpoint
+            var downloadUrl = 'download_qr.php?event_id=' + eventId;
+            var downloadImg = new Image();
+            downloadImg.src = downloadUrl;
+            downloadImg.onload = function() {
+                console.log('Download endpoint preloaded');
+            };
+            
+            console.log('Download versions preloaded for faster downloads');
         }
         
         // Initialize QR code immediately when DOM is ready

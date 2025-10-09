@@ -1,11 +1,11 @@
 <?php
 /**
- * QR Code Download Endpoint
- * Server-side QR code download for Render deployment
+ * Fast QR Code Download Endpoint
+ * Optimized server-side QR code download for Render deployment
  */
 
-// Set headers for download
-header('Content-Type: application/json');
+// Enable output buffering for faster response
+ob_start();
 
 try {
     // Get event ID from request
@@ -42,20 +42,50 @@ try {
     ];
     $qrText = json_encode($qrPayload);
     
-    // Generate QR code URL using QR Server API
-    $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=' . urlencode($qrText);
+    // Check for cached QR code first
+    $cacheDir = __DIR__ . '/uploads/qr_cache/';
+    if (!is_dir($cacheDir)) {
+        mkdir($cacheDir, 0755, true);
+    }
+    
+    $cacheFile = $cacheDir . 'event_' . $eventId . '_qr.png';
+    $cacheKey = md5($qrText);
+    $cacheFileWithKey = $cacheDir . 'event_' . $eventId . '_' . $cacheKey . '_qr.png';
+    
+    // Check if cached file exists and is recent (within 1 hour)
+    if (file_exists($cacheFileWithKey) && (time() - filemtime($cacheFileWithKey)) < 3600) {
+        // Serve cached file
+        header('Content-Type: image/png');
+        header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
+        header('Content-Length: ' . filesize($cacheFileWithKey));
+        header('Cache-Control: public, max-age=3600');
+        header('ETag: "' . $cacheKey . '"');
+        
+        // Clear output buffer and send cached file
+        ob_end_clean();
+        readfile($cacheFileWithKey);
+        exit;
+    }
+    
+    // Generate QR code URL using QR Server API (smaller size for faster download)
+    $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=' . urlencode($qrText);
     
     // Set response headers for download
     header('Content-Type: image/png');
     header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
+    header('Cache-Control: public, max-age=3600');
+    header('ETag: "' . $cacheKey . '"');
     
-    // Fetch QR code image from API
+    // Fetch QR code image from API with optimized settings
     $context = stream_context_create([
         'http' => [
-            'timeout' => 10,
-            'user_agent' => 'SmartApp QR Downloader'
+            'timeout' => 5, // Reduced timeout for faster response
+            'user_agent' => 'SmartApp QR Downloader',
+            'method' => 'GET',
+            'header' => [
+                'Accept: image/png',
+                'Connection: close'
+            ]
         ]
     ]);
     
@@ -65,11 +95,19 @@ try {
         throw new Exception('Failed to generate QR code');
     }
     
-    // Output QR code image
+    // Cache the QR code for future requests
+    file_put_contents($cacheFileWithKey, $qrImage);
+    
+    // Set content length
+    header('Content-Length: ' . strlen($qrImage));
+    
+    // Clear output buffer and send image
+    ob_end_clean();
     echo $qrImage;
     
 } catch (Exception $e) {
     // Reset headers for error response
+    ob_end_clean();
     header('Content-Type: application/json');
     http_response_code(400);
     
