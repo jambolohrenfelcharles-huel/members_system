@@ -50,6 +50,26 @@ try {
             echo "<p style='color: green;'>✅ PostgreSQL schema executed successfully</p>";
         }
         
+        // Ensure announcements table exists
+        echo "<h3>📋 Ensuring Announcements Table Exists</h3>";
+        
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM announcements");
+            echo "<p style='color: green;'>✅ Announcements table exists</p>";
+        } catch (Exception $e) {
+            echo "<p style='color: orange;'>🔧 Creating announcements table...</p>";
+            $createAnnouncementsSQL = "
+                CREATE TABLE IF NOT EXISTS announcements (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ";
+            $db->exec($createAnnouncementsSQL);
+            echo "<p style='color: green;'>✅ Announcements table created successfully</p>";
+        }
+        
         // Run attendance migration
         echo "<h3>🔧 Running Attendance Migration</h3>";
         
