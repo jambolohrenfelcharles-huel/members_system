@@ -17,7 +17,7 @@ $stats = [];
 
 // Total members - check which table exists
 $db_type = $_ENV['DB_TYPE'] ?? 'mysql';
-$members_table = ($db_type === 'postgresql') ? 'members' : 'membership_monitoring';
+$members_table = ($db_type === 'postgresql') ? 'members' : '$members_table';
 $stmt = $db->query("SELECT COUNT(*) as total FROM $members_table");
 $stats['total_members'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
@@ -33,7 +33,7 @@ $stats['upcoming_events'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 if ($db_type === 'postgresql') {
     $stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 } else {
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
+$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 }
 $stats['today_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
@@ -86,7 +86,7 @@ for ($m = 1; $m <= 12; $m++) {
     if ($db_type === 'postgresql') {
         $stmt = $db->prepare("SELECT COUNT(*) AS total FROM members WHERE TO_CHAR(created_at, 'YYYY-MM') = ?");
     } else {
-    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM membership_monitoring WHERE DATE_FORMAT(created_at, '%Y-%m') = ?");
+    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM $members_table WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)");
     }
     $stmt->execute([$monthKey]);
     $memberTrend[] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
@@ -94,7 +94,7 @@ for ($m = 1; $m <= 12; $m++) {
     if ($db_type === 'postgresql') {
         $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE TO_CHAR(event_date, 'YYYY-MM') = ?");
     } else {
-    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE DATE_FORMAT(event_date, '%Y-%m') = ?");
+    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE EXTRACT(YEAR FROM event_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM event_date) = EXTRACT(MONTH FROM CURRENT_DATE)");
     }
     $stmt->execute([$monthKey]);
     $eventTrend[] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);

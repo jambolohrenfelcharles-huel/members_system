@@ -40,7 +40,7 @@ $db_type = $_ENV['DB_TYPE'] ?? 'mysql';
 if ($db_type === 'postgresql') {
     $db->query("UPDATE " . $members_table . " SET status = 'inactive' WHERE renewal_date < CURRENT_DATE AND status = 'active'");
 } else {
-    $db->query("UPDATE " . $members_table . " SET status = 'inactive' WHERE renewal_date < CURDATE() AND status = 'active'");
+    $db->query("UPDATE " . $members_table . " SET status = 'inactive' WHERE renewal_date < CURRENT_DATE AND status = 'active'");
 }
 
 $conditions = [];

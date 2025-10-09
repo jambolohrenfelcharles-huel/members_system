@@ -74,7 +74,7 @@ foreach ($events as $event) {
         $attendParams[] = "%$search%";
         $attendParams[] = "%$search%";
     }
-    $orderBy = 'ORDER BY date DESC';
+    $orderBy = 'ORDER BY attendance_date DESC';
     $stmt = $db->prepare("SELECT * FROM attendance WHERE $attendWhere $orderBy");
     $stmt->execute($attendParams);
     $event_attendance[$event['id']] = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -83,7 +83,7 @@ foreach ($events as $event) {
 // Optionally, you can add pagination for events if needed (not implemented here)
 
 // Get today's attendance count
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
+$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 $todayCount = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 ?>
 
@@ -207,7 +207,7 @@ if ($attendanceNotification) {
                         <tbody>
                             <?php foreach ($records as $record): ?>
                                 <tr>
-                                    <td><i class="fas fa-calendar me-1"></i><?php echo date('M d, Y', strtotime($record['date'])); ?></td>
+                                    <td><i class="fas fa-calendar me-1"></i><?php echo date('M d, Y', strtotime($record['attendance_date'])); ?></td>
                                     <td><span class="badge bg-secondary"><?php echo htmlspecialchars($record['member_id']); ?></span></td>
                                     <td>
                                         <div class="d-flex align-items-center">

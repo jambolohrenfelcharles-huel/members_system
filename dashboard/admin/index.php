@@ -51,7 +51,8 @@ $stats = [];
 $stmt = $db->query("SELECT COUNT(*) as total FROM users");
 $stats['total_users'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-$stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring");
+$members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : '$members_table';
+$stmt = $db->query("SELECT COUNT(*) as total FROM $members_table");
 $stats['total_members'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 $stmt = $db->query("SELECT COUNT(*) as total FROM events");
@@ -63,24 +64,24 @@ $stats['total_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0)
 $stmt = $db->query("SELECT COUNT(*) as total FROM announcements");
 $stats['total_announcements'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-$stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring WHERE status = 'active' AND renewal_date >= CURDATE()");
+$stmt = $db->query("SELECT COUNT(*) as total FROM $members_table WHERE status = 'active' AND renewal_date >= CURRENT_DATE");
 $stats['active_members'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 $stmt = $db->query("SELECT COUNT(*) as total FROM events WHERE status = 'upcoming'");
 $stats['upcoming_events'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
+$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 $stats['today_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Get recent activity (last 7 days)
 $recent_activity = [];
-$stmt = $db->query("SELECT 'member' as type, name as title, created_at FROM membership_monitoring WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY created_at DESC LIMIT 5");
+$stmt = $db->query("SELECT 'member' as type, name as title, created_at FROM $members_table WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' ORDER BY created_at DESC LIMIT 5");
 $recent_members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt = $db->query("SELECT 'event' as type, name as title, created_at FROM events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY created_at DESC LIMIT 5");
+$stmt = $db->query("SELECT 'event' as type, name as title, created_at FROM events WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' ORDER BY created_at DESC LIMIT 5");
 $recent_events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt = $db->query("SELECT 'announcement' as type, title, created_at FROM announcements WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY created_at DESC LIMIT 5");
+$stmt = $db->query("SELECT 'announcement' as type, title, created_at FROM announcements WHERE created_at >= CURRENT_DATE - INTERVAL '7 days' ORDER BY created_at DESC LIMIT 5");
 $recent_announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $recent_activity = array_merge($recent_members, $recent_events, $recent_announcements);
@@ -95,10 +96,10 @@ for ($i = 11; $i >= 0; $i--) {
     $month = date('Y-m', strtotime("-$i months"));
     $month_name = date('M Y', strtotime("-$i months"));
     
-    $stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring WHERE DATE_FORMAT(created_at, '%Y-%m') = '$month'");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM $members_table WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)");
     $members_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
-    $stmt = $db->query("SELECT COUNT(*) as total FROM events WHERE DATE_FORMAT(created_at, '%Y-%m') = '$month'");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM events WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)");
     $events_count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
     
     $monthly_data[] = [

@@ -11,7 +11,7 @@ $database = new Database();
 $db = $database->getConnection();
 
 $id = $_GET['id'] ?? 0;
-$stmt = $db->prepare("SELECT * FROM membership_monitoring WHERE id = ?");
+$stmt = $db->prepare("SELECT * FROM members WHERE id = ?");
 $stmt->execute([$id]);
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 

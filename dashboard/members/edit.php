@@ -16,7 +16,7 @@ $database = new Database();
 $db = $database->getConnection();
 
 $id = $_GET['id'] ?? 0;
-$stmt = $db->prepare("SELECT * FROM membership_monitoring WHERE id = ?");
+$stmt = $db->prepare("SELECT * FROM members WHERE id = ?");
 $stmt->execute([$id]);
 $member = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -61,7 +61,7 @@ if ($_POST) {
     
     // Check if email already exists (excluding current member)
     if (!empty($email) && empty($errors)) {
-        $checkEmail = $db->prepare("SELECT id FROM membership_monitoring WHERE email = ? AND id != ?");
+        $checkEmail = $db->prepare("SELECT id FROM members WHERE email = ? AND id != ?");
         $checkEmail->execute([$email, $id]);
         if ($checkEmail->fetch(PDO::FETCH_ASSOC)) {
             $errors[] = "Email address is already registered";
@@ -72,11 +72,11 @@ if ($_POST) {
         // Check if profile_photo column exists in DB
         $profilePhotoColumnExists = false;
         try {
-            $colCheck = $db->query("SHOW COLUMNS FROM membership_monitoring LIKE 'profile_photo'");
+            $colCheck = $db->query("SHOW COLUMNS FROM members LIKE 'profile_photo'");
             $profilePhotoColumnExists = $colCheck->fetch(PDO::FETCH_ASSOC) !== false;
         } catch (Exception $e) {}
         if ($profilePhotoColumnExists) {
-            $query = "UPDATE membership_monitoring SET name=?, email=?, club_position=?, home_address=?, contact_number=?, philhealth_number=?, pagibig_number=?, tin_number=?, birthdate=?, height=?, weight=?, blood_type=?, religion=?, emergency_contact_person=?, emergency_contact_number=?, club_affiliation=?, region=?, profile_photo=? WHERE id=?";
+            $query = "UPDATE members SET name=?, email=?, club_position=?, home_address=?, contact_number=?, philhealth_number=?, pagibig_number=?, tin_number=?, birthdate=?, height=?, weight=?, blood_type=?, religion=?, emergency_contact_person=?, emergency_contact_number=?, club_affiliation=?, region=?, profile_photo=? WHERE id=?";
             $params = [
                 $name, $email, $club_position, $home_address, $contact_number, $philhealth_number, 
                 $pagibig_number, $tin_number, $birthdate, $height, $weight, $blood_type, 
@@ -84,7 +84,7 @@ if ($_POST) {
                 $club_affiliation, $region, $id
             ];
         } else {
-            $query = "UPDATE membership_monitoring SET name=?, email=?, club_position=?, home_address=?, contact_number=?, philhealth_number=?, pagibig_number=?, tin_number=?, birthdate=?, height=?, weight=?, blood_type=?, religion=?, emergency_contact_person=?, emergency_contact_number=?, club_affiliation=?, region=? WHERE id=?";
+            $query = "UPDATE members SET name=?, email=?, club_position=?, home_address=?, contact_number=?, philhealth_number=?, pagibig_number=?, tin_number=?, birthdate=?, height=?, weight=?, blood_type=?, religion=?, emergency_contact_person=?, emergency_contact_number=?, club_affiliation=?, region=? WHERE id=?";
             $params = [
                 $name, $email, $club_position, $home_address, $contact_number, $philhealth_number, 
                 $pagibig_number, $tin_number, $birthdate, $height, $weight, $blood_type, 

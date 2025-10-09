@@ -19,7 +19,8 @@ $db = $database->getConnection();
 $stats = [];
 
 // Total members
-$stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring");
+$members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'members';
+$stmt = $db->query("SELECT COUNT(*) as total FROM $members_table");
 $stats['total_members'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Total events
@@ -31,19 +32,19 @@ $stmt = $db->query("SELECT COUNT(*) as total FROM attendance");
 $stats['total_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Today's attendance
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE DATE(date) = CURDATE()");
+$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date = CURRENT_DATE");
 $stats['today_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // This week's attendance
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE YEARWEEK(date) = YEARWEEK(NOW())");
+$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE attendance_date >= CURRENT_DATE - INTERVAL '7 days'");
 $stats['week_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // This month's attendance
-$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE YEAR(date) = YEAR(NOW()) AND MONTH(date) = MONTH(NOW())");
+$stmt = $db->query("SELECT COUNT(*) as total FROM attendance WHERE EXTRACT(YEAR FROM attendance_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM attendance_date) = EXTRACT(MONTH FROM CURRENT_DATE)");
 $stats['month_attendance'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 
 // Members by position
-$stmt = $db->query("SELECT club_position, COUNT(*) as count FROM membership_monitoring GROUP BY club_position ORDER BY count DESC");
+$stmt = $db->query("SELECT club_position, COUNT(*) as count FROM $members_table GROUP BY club_position ORDER BY count DESC");
 $members_by_position = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Events by status
@@ -51,7 +52,7 @@ $stmt = $db->query("SELECT status, COUNT(*) as count FROM events GROUP BY status
 $events_by_status = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Recent attendance (last 7 days)
-$stmt = $db->query("SELECT DATE(date) as attendance_date, COUNT(*) as count FROM attendance WHERE date >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY DATE(date) ORDER BY attendance_date DESC");
+$stmt = $db->query("SELECT attendance_date, COUNT(*) as count FROM attendance WHERE attendance_date >= CURRENT_DATE - INTERVAL '7 days' GROUP BY attendance_date ORDER BY attendance_date DESC");
 $recent_attendance = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Top attending members

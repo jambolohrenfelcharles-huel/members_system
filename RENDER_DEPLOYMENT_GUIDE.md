@@ -8,12 +8,22 @@ This guide will help you deploy your SmartApp to Render.com using Docker and Pos
 2. Render.com account
 3. Email service credentials (Gmail/SMTP)
 
-## Step-by-Step Deployment
+## Quick Deployment (Recommended)
 
-### 1. Push Code to GitHub
-Your code is already pushed to: `https://github.com/jambolohrenfelcharles-huel/members_system.git`
+### Option 1: Using render.yaml (Automatic)
+1. Push your code to GitHub
+2. Go to [Render Dashboard](https://dashboard.render.com)
+3. Click "New +" → "Blueprint"
+4. Connect your GitHub repository
+5. Render will automatically create both web service and PostgreSQL database
+6. Set environment variables:
+   - `POSTGRES_PASSWORD`: Generate a strong password
+   - `SMTP_USERNAME`: Your Gmail address
+   - `SMTP_PASSWORD`: Your Gmail app password
+   - `SMTP_FROM_EMAIL`: Your Gmail address
+   - `SMTP_FROM_NAME`: SmartApp
 
-### 2. Create Render Services
+### Option 2: Manual Setup
 
 #### A. Create PostgreSQL Database
 1. Go to [Render Dashboard](https://dashboard.render.com)
@@ -34,11 +44,11 @@ Your code is already pushed to: `https://github.com/jambolohrenfelcharles-huel/m
    - **Dockerfile Path**: `./dockerfile`
    - **Plan**: Free
 
-### 3. Set Environment Variables
+#### C. Set Environment Variables
 
 In your web service, add these environment variables:
 
-#### Database Configuration
+##### Database Configuration (Auto-linked if using render.yaml)
 ```
 DB_TYPE=postgresql
 DB_HOST=[Your PostgreSQL Internal Database URL]
@@ -47,7 +57,7 @@ DB_USERNAME=smartapp_user
 DB_PASSWORD=[Your PostgreSQL Password]
 ```
 
-#### Email Configuration (Optional)
+##### Email Configuration (Required for notifications)
 ```
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587

@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     member_id VARCHAR(50) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     club_position VARCHAR(50) NOT NULL,
+    event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     attendance_date DATE GENERATED ALWAYS AS (date::date) STORED
 );

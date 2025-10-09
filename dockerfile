@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     unzip \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -33,7 +34,8 @@ COPY . .
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
+    && chmod -R 755 /var/www/html \
+    && chmod +x start.sh
 
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
@@ -49,8 +51,14 @@ RUN echo '<VirtualHost *:80>\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
+# Create .htaccess for better routing
+RUN echo 'RewriteEngine On\n\
+RewriteCond %{REQUEST_FILENAME} !-f\n\
+RewriteCond %{REQUEST_FILENAME} !-d\n\
+RewriteRule ^(.*)$ index.php [QSA,L]' > /var/www/html/.htaccess
+
 # Expose port 80
 EXPOSE 80
 
-# Start Apache directly
-CMD ["apache2-foreground"]
+# Use the startup script
+CMD ["./start.sh"]

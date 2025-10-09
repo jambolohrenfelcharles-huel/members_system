@@ -115,7 +115,7 @@ if ($_POST) {
                     email_frequency = ?, 
                     quiet_start = ?, 
                     quiet_end = ?, 
-                    updated_at = NOW() 
+                    updated_at = CURRENT_TIMESTAMP 
                     WHERE user_id = ?");
                 $result = $stmt->execute([
                     $email_notifications, 
@@ -130,7 +130,7 @@ if ($_POST) {
                 // Insert new preferences
                 $stmt = $db->prepare("INSERT INTO user_notifications 
                     (user_id, email_notifications, event_reminders, system_updates, email_frequency, quiet_start, quiet_end, created_at, updated_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+                    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
                 $result = $stmt->execute([
                     $_SESSION['user_id'], 
                     $email_notifications, 

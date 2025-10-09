@@ -248,7 +248,7 @@ if ($_POST) {
                     $hashed = hash('sha256', $plainPassword);
 
                     // Insert user
-                    $ins = $db->prepare("INSERT INTO users (username, email, password, role, created_at) VALUES (?, ?, ?, 'user', NOW())");
+                    $ins = $db->prepare("INSERT INTO users (username, email, password, role, created_at) VALUES (?, ?, ?, 'user', CURRENT_TIMESTAMP)");
                     $ins->execute([$username, $email, $hashed]);
                     $newUserId = (int)$db->lastInsertId();
 

@@ -27,8 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
     }
     $email = $user['email'];
 
-    // Get member info from membership_monitoring using email
-    $stmt = $db->prepare('SELECT id, name, club_position FROM membership_monitoring WHERE email = ? LIMIT 1');
+    // Get member info from members table using email
+    $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'members';
+    $stmt = $db->prepare("SELECT id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
     $stmt->execute([$email]);
     $member = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$member) {
