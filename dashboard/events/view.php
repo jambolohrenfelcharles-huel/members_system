@@ -480,77 +480,300 @@ if (!$event) {
                 btn.addEventListener('click', function(){
                     console.log('Download button clicked');
                     
-                    // Check for server-side QR code first
-                    var serverQr = document.getElementById('serverQrCode');
-                    if (serverQr && serverQr.src) {
-                        var a = document.createElement('a');
-                        a.href = serverQr.src;
-                        a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        console.log('Server-side QR code downloaded');
-                        return;
-                    }
+                    // Show loading state
+                    var originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Downloading...';
                     
-                    // Check for client-side QR code
-                    var clientQr = document.getElementById('clientQrCode');
-                    if (clientQr) {
-                        var img = clientQr.querySelector('img');
-                        var canvas = clientQr.querySelector('canvas');
+                    try {
+                        // Method 1: Try server-side QR code download
+                        var serverQr = document.getElementById('serverQrCode');
+                        if (serverQr && serverQr.src && serverQr.complete && serverQr.naturalHeight > 0) {
+                            console.log('Attempting server-side QR code download');
+                            downloadImage(serverQr.src, 'event_<?php echo (int)$event['id']; ?>_qr.png');
+                            resetButton(btn, originalText);
+                            return;
+                        }
                         
-                        if (img && img.src) {
-                            var a = document.createElement('a');
-                            a.href = img.src;
-                            a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                            console.log('Client-side QR code downloaded as image');
+                        // Method 2: Try client-side QR code (image)
+                        var clientQr = document.getElementById('clientQrCode');
+                        if (clientQr) {
+                            var img = clientQr.querySelector('img');
+                            if (img && img.src && img.complete && img.naturalHeight > 0) {
+                                console.log('Attempting client-side QR code download (image)');
+                                downloadImage(img.src, 'event_<?php echo (int)$event['id']; ?>_qr.png');
+                                resetButton(btn, originalText);
+                                return;
+                            }
+                        }
+                        
+                        // Method 3: Try client-side QR code (canvas)
+                        if (clientQr) {
+                            var canvas = clientQr.querySelector('canvas');
+                            if (canvas) {
+                                console.log('Attempting client-side QR code download (canvas)');
+                                downloadCanvas(canvas, 'event_<?php echo (int)$event['id']; ?>_qr.png');
+                                resetButton(btn, originalText);
+                                return;
+                            }
+                        }
+                        
+                        // Method 4: Try any QR code in container
+                        var img = container.querySelector('img');
+                        var canvas = container.querySelector('canvas');
+                        
+                        if (img && img.src && img.complete && img.naturalHeight > 0) {
+                            console.log('Attempting container QR code download (image)');
+                            downloadImage(img.src, 'event_<?php echo (int)$event['id']; ?>_qr.png');
+                            resetButton(btn, originalText);
+                            return;
                         } else if (canvas) {
-                            var a2 = document.createElement('a');
-                            a2.href = canvas.toDataURL('image/png');
-                            a2.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                            document.body.appendChild(a2);
-                            a2.click();
-                            document.body.removeChild(a2);
-                            console.log('Client-side QR code downloaded as canvas');
+                            console.log('Attempting container QR code download (canvas)');
+                            downloadCanvas(canvas, 'event_<?php echo (int)$event['id']; ?>_qr.png');
+                            resetButton(btn, originalText);
+                            return;
                         }
-                    }
-                    
-                    // Fallback: check container for any QR code
-                    var img = container.querySelector('img');
-                    var canvas = container.querySelector('canvas');
-                    
-                    if (img && img.src) {
-                        var a = document.createElement('a');
-                        a.href = img.src;
-                        a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        console.log('QR code downloaded as image');
-                    } else if (canvas) {
-                        var a2 = document.createElement('a');
-                        a2.href = canvas.toDataURL('image/png');
-                        a2.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                        document.body.appendChild(a2);
-                        a2.click();
-                        document.body.removeChild(a2);
-                        console.log('QR code downloaded as canvas');
-                    } else {
-                        // Check if fallback data is available
-                        var qrFallback = document.getElementById('qrFallback');
-                        if (qrFallback && qrFallback.style.display !== 'none') {
-                            console.log('No QR code image available, but fallback data is shown');
-                            alert('QR code image not available for download. Please copy the QR code data manually.');
-                        } else {
-                            console.error('No QR code element found for download');
-                            alert('QR code not available for download');
-                        }
+                        
+                        // Method 5: Try server-side download endpoint
+                        console.log('No QR code image available, trying server-side download');
+                        downloadFromServer();
+                        resetButton(btn, originalText);
+                        
+                    } catch (error) {
+                        console.error('Download failed:', error);
+                        alert('Download failed. Please try again or copy the QR code data manually.');
+                        resetButton(btn, originalText);
                     }
                 });
             }
+        }
+        
+        function downloadImage(src, filename) {
+            try {
+                // Method 1: Direct download (works on most browsers)
+                var a = document.createElement('a');
+                a.href = src;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                console.log('Image downloaded successfully');
+                
+                // Show success message
+                showDownloadSuccess(filename);
+                
+            } catch (error) {
+                console.error('Direct download failed:', error);
+                
+                // Method 2: Open in new tab (fallback)
+                try {
+                    var newWindow = window.open(src, '_blank');
+                    if (newWindow) {
+                        console.log('Opened QR code in new tab for manual download');
+                        alert('QR code opened in new tab. Right-click and save as ' + filename);
+                    } else {
+                        throw new Error('Popup blocked');
+                    }
+                } catch (popupError) {
+                    console.error('Popup blocked:', popupError);
+                    
+                    // Method 3: Copy to clipboard (final fallback)
+                    copyQrDataToClipboard();
+                }
+            }
+        }
+        
+        function downloadCanvas(canvas, filename) {
+            try {
+                // Convert canvas to blob and download
+                canvas.toBlob(function(blob) {
+                    if (blob) {
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        console.log('Canvas downloaded successfully');
+                        showDownloadSuccess(filename);
+                    } else {
+                        throw new Error('Canvas blob creation failed');
+                    }
+                }, 'image/png');
+                
+            } catch (error) {
+                console.error('Canvas download failed:', error);
+                
+                // Fallback: Convert to data URL
+                try {
+                    var dataUrl = canvas.toDataURL('image/png');
+                    var a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = filename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    console.log('Canvas downloaded via data URL');
+                    showDownloadSuccess(filename);
+                } catch (dataUrlError) {
+                    console.error('Data URL download failed:', dataUrlError);
+                    copyQrDataToClipboard();
+                }
+            }
+        }
+        
+        function downloadFromServer() {
+            try {
+                var eventId = <?php echo (int)$event['id']; ?>;
+                var downloadUrl = 'download_qr.php?event_id=' + eventId;
+                
+                console.log('Attempting server-side download from:', downloadUrl);
+                
+                // Method 1: Direct download link
+                var a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = 'event_' + eventId + '_qr.png';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                console.log('Server-side download initiated');
+                showDownloadSuccess('event_' + eventId + '_qr.png');
+                
+            } catch (error) {
+                console.error('Server-side download failed:', error);
+                
+                // Fallback: Generate QR code data for manual download
+                generateQrDataForDownload();
+            }
+        }
+        
+        function generateQrDataForDownload() {
+            var payload = {
+                type: 'attendance',
+                event_id: <?php echo (int)$event['id']; ?>,
+                event_name: <?php echo json_encode($event['title']); ?>,
+                ts: Date.now()
+            };
+            var qrText = JSON.stringify(payload);
+            
+            // Create a downloadable text file
+            var blob = new Blob([qrText], { type: 'text/plain' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'event_<?php echo (int)$event['id']; ?>_qr_data.txt';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('QR code data downloaded as text file');
+            alert('QR code data downloaded as text file. You can use this data to generate a QR code manually.');
+        }
+        
+        function copyQrDataToClipboard() {
+            var payload = {
+                type: 'attendance',
+                event_id: <?php echo (int)$event['id']; ?>,
+                event_name: <?php echo json_encode($event['title']); ?>,
+                ts: Date.now()
+            };
+            var qrText = JSON.stringify(payload);
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(qrText).then(function() {
+                    console.log('QR code data copied to clipboard');
+                    alert('QR code data copied to clipboard. You can paste it into a QR code generator.');
+                }).catch(function(error) {
+                    console.error('Clipboard copy failed:', error);
+                    showQrDataModal(qrText);
+                });
+            } else {
+                console.log('Clipboard API not available, showing modal');
+                showQrDataModal(qrText);
+            }
+        }
+        
+        function showQrDataModal(qrText) {
+            var modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            var content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 500px;
+                width: 90%;
+                max-height: 80%;
+                overflow-y: auto;
+            `;
+            
+            content.innerHTML = `
+                <h5>QR Code Data</h5>
+                <p>Copy this data to generate a QR code manually:</p>
+                <textarea readonly style="width: 100%; height: 100px; margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">${qrText}</textarea>
+                <div style="text-align: right;">
+                    <button onclick="this.closest('.modal').remove()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+                </div>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            // Auto-select text for easy copying
+            var textarea = content.querySelector('textarea');
+            textarea.select();
+        }
+        
+        function showDownloadSuccess(filename) {
+            // Show success message
+            var successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #d4edda;
+                color: #155724;
+                padding: 12px 20px;
+                border-radius: 4px;
+                border: 1px solid #c3e6cb;
+                z-index: 10000;
+                font-size: 14px;
+            `;
+            successDiv.innerHTML = '<i class="fas fa-check me-2"></i>Downloaded: ' + filename;
+            document.body.appendChild(successDiv);
+            
+            // Remove after 3 seconds
+            setTimeout(function() {
+                if (successDiv.parentNode) {
+                    successDiv.parentNode.removeChild(successDiv);
+                }
+            }, 3000);
+        }
+        
+        function resetButton(btn, originalText) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
         
         // Initialize QR code immediately when DOM is ready
