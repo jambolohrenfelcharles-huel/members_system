@@ -52,7 +52,12 @@ CREATE TABLE IF NOT EXISTS attendance (
     club_position VARCHAR(50) NOT NULL,
     event_id INTEGER REFERENCES events(id) ON DELETE CASCADE,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    attendance_date DATE GENERATED ALWAYS AS (date::date) STORED
+    attendance_date DATE GENERATED ALWAYS AS (date::date) STORED,
+    status VARCHAR(20) DEFAULT 'present' CHECK (status IN ('present', 'absent', 'late')),
+    event_name VARCHAR(255),
+    semester INTEGER,
+    schoolyear VARCHAR(20),
+    dateadded TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Members Table (equivalent to membership_monitoring in MySQL)

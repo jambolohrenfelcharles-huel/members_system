@@ -17,7 +17,7 @@ $stats = [];
 
 // Total members - check which table exists
 $db_type = $_ENV['DB_TYPE'] ?? 'mysql';
-$members_table = ($db_type === 'postgresql') ? 'members' : '$members_table';
+$members_table = ($db_type === 'postgresql') ? 'members' : 'membership_monitoring';
 $stmt = $db->query("SELECT COUNT(*) as total FROM $members_table");
 $stats['total_members'] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 

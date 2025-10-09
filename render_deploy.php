@@ -72,6 +72,46 @@ try {
             echo "<p style='color: green;'>✅ Index created successfully</p>";
         }
         
+        // Check and add missing columns
+        $requiredColumns = ['full_name', 'club_position', 'status', 'event_name', 'semester', 'schoolyear', 'dateadded'];
+        foreach ($requiredColumns as $column) {
+            $stmt = $db->prepare("SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance' AND column_name = ?");
+            $stmt->execute([$column]);
+            $columnExists = $stmt->fetch();
+            
+            if (!$columnExists) {
+                echo "<p style='color: orange;'>🔧 Adding $column column to attendance table...</p>";
+                
+                switch ($column) {
+                    case 'full_name':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN full_name VARCHAR(100) NOT NULL DEFAULT ''");
+                        break;
+                    case 'club_position':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN club_position VARCHAR(50) NOT NULL DEFAULT ''");
+                        break;
+                    case 'status':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN status VARCHAR(20) DEFAULT 'present' CHECK (status IN ('present', 'absent', 'late'))");
+                        break;
+                    case 'event_name':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN event_name VARCHAR(255)");
+                        break;
+                    case 'semester':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN semester INTEGER");
+                        break;
+                    case 'schoolyear':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN schoolyear VARCHAR(20)");
+                        break;
+                    case 'dateadded':
+                        $db->exec("ALTER TABLE attendance ADD COLUMN dateadded TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+                        break;
+                }
+                
+                echo "<p style='color: green;'>✅ $column column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ $column column already exists</p>";
+            }
+        }
+        
     } else {
         echo "<h3>🐬 MySQL Setup</h3>";
         
