@@ -154,9 +154,7 @@ if (!$event) {
                                     </div>
                                     <div class="card-body text-center">
                                         <div id="eventQr" class="d-inline-block bg-white p-3 rounded" style="min-height: 200px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                                            <div class="spinner-border text-primary" role="status">
-                                                <span class="visually-hidden">Generating QR Code...</span>
-                                            </div>
+                                            <!-- QR code will appear here immediately -->
                                         </div>
                                         <p class="small text-muted mt-2">Scan to check-in to this event</p>
                                         <div id="qrError" class="alert alert-warning d-none" role="alert">
@@ -224,51 +222,13 @@ if (!$event) {
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" as="script">
     <link rel="preload" href="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js" as="script">
     
-    <!-- Load QR code libraries asynchronously -->
+    <!-- Load QR code libraries synchronously for immediate display -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
-        // Load QR code libraries asynchronously for faster page load
-        (function() {
-            var scripts = [
-                'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
-                'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js'
-            ];
-            
-            var loadedCount = 0;
-            var totalScripts = scripts.length;
-            
-            function loadScript(src) {
-                return new Promise(function(resolve, reject) {
-                    var script = document.createElement('script');
-                    script.src = src;
-                    script.async = true;
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-            }
-            
-            // Load all scripts in parallel
-            Promise.all(scripts.map(loadScript))
-                .then(function() {
-                    console.log('All QR code libraries loaded successfully');
-                    // Initialize QR code when libraries are ready
-                    if (typeof initializeQrCode === 'function') {
-                        initializeQrCode();
-                    }
-                })
-                .catch(function(error) {
-                    console.error('Error loading QR code libraries:', error);
-                    // Still try to initialize with available libraries
-                    if (typeof initializeQrCode === 'function') {
-                        initializeQrCode();
-                    }
-                });
-        })();
-    </script>
-    <script>
-        // QR Code initialization function - called when libraries are loaded
+        // QR Code initialization function - immediate display
         function initializeQrCode() {
-            console.log('Initializing QR code with optimized loading...');
+            console.log('Initializing QR code for immediate display...');
             
             // Helper function to show QR error
             function showQrError(message) {
@@ -292,9 +252,9 @@ if (!$event) {
                 return;
             }
             
-            console.log('QR container found, checking QRCode library...');
+            console.log('QR container found, generating QR code immediately...');
             
-            // Check for cached QR code first
+            // Check for cached QR code first for instant display
             var cacheKey = 'qr_event_<?php echo (int)$event['id']; ?>';
             var cachedQr = localStorage.getItem(cacheKey);
             
@@ -303,7 +263,7 @@ if (!$event) {
                     var cachedData = JSON.parse(cachedQr);
                     // Check if cache is still valid (within 1 hour)
                     if (Date.now() - cachedData.timestamp < 3600000) {
-                        console.log('Using cached QR code for faster loading');
+                        console.log('Using cached QR code for instant display');
                         container.innerHTML = cachedData.qrHtml;
                         setupDownloadButton(container);
                         return;
@@ -313,7 +273,7 @@ if (!$event) {
                 }
             }
             
-            // Optimized payload - smaller and faster
+            // Generate QR code immediately
             var payload = {
                 type: 'attendance',
                 event_id: <?php echo (int)$event['id']; ?>,
@@ -322,12 +282,12 @@ if (!$event) {
             };
             var text = JSON.stringify(payload);
             
-            // Check if QRCode library is loaded
+            // Try primary library first
             if (typeof QRCode !== 'undefined') {
-                console.log('Primary QRCode library loaded, generating QR code...');
+                console.log('Generating QR code with primary library...');
                 generateQrWithPrimary(text, container);
             } else if (typeof QRCodeLib !== 'undefined') {
-                console.log('Using fallback QRCode library...');
+                console.log('Generating QR code with fallback library...');
                 generateQrWithFallback(text, container);
             } else {
                 console.error('Both QRCode libraries failed to load');
@@ -448,16 +408,22 @@ if (!$event) {
             }
         }
         
-        // Fallback initialization if libraries load before DOM is ready
+        // Initialize QR code immediately when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, checking if QR code libraries are ready...');
+            console.log('DOM loaded, initializing QR code immediately...');
             
-            // If libraries are already loaded, initialize immediately
-            if (typeof QRCode !== 'undefined' || typeof QRCodeLib !== 'undefined') {
-                initializeQrCode();
-            }
-            // Otherwise, wait for the async loading to complete
+            // Initialize QR code immediately since libraries are loaded synchronously
+            initializeQrCode();
         });
+        
+        // Fallback: Initialize immediately if DOM is already loaded
+        if (document.readyState === 'loading') {
+            // DOM is still loading, wait for DOMContentLoaded
+        } else {
+            // DOM is already loaded, initialize immediately
+            console.log('DOM already loaded, initializing QR code immediately...');
+            initializeQrCode();
+        }
     </script>
 </body>
 </html>
