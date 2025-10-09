@@ -54,14 +54,15 @@ try {
     
     // Check if cached file exists and is recent (within 1 hour)
     if (file_exists($cacheFileWithKey) && (time() - filemtime($cacheFileWithKey)) < 3600) {
-        // Serve cached file
+        // Serve cached file instantly
         header('Content-Type: image/png');
         header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
         header('Content-Length: ' . filesize($cacheFileWithKey));
         header('Cache-Control: public, max-age=3600');
         header('ETag: "' . $cacheKey . '"');
+        header('X-Download-Instant: true');
         
-        // Clear output buffer and send cached file
+        // Clear output buffer and send cached file immediately
         ob_end_clean();
         readfile($cacheFileWithKey);
         exit;
@@ -70,12 +71,12 @@ try {
     // Generate QR code URL using QR Server API (smaller size for faster download)
     $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=' . urlencode($qrText);
     
-    // Set response headers for direct download
+    // Set response headers for instant download
     header('Content-Type: image/png');
     header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
     header('Cache-Control: public, max-age=3600');
     header('ETag: "' . $cacheKey . '"');
-    header('X-Download-Optimized: true');
+    header('X-Download-Instant: true');
     
     // Fetch QR code image from API with optimized settings
     $context = stream_context_create([

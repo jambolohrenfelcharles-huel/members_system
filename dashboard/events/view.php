@@ -151,8 +151,8 @@ if (!$event) {
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i>Attendance QR Code</h6>
                                         <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download</button>
-                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" class="btn btn-sm btn-success ms-2" style="display: none;" id="directDownloadLink">
-                                            <i class="fas fa-download me-1"></i>Direct Download
+                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" class="btn btn-sm btn-success ms-2" onclick="directDownload(); return false;">
+                                            <i class="fas fa-download me-1"></i>Instant Download
                                         </a>
                                     </div>
                                     <div class="card-body text-center">
@@ -491,59 +491,22 @@ if (!$event) {
         }
         
         function directDownload() {
-            try {
-                var eventId = <?php echo (int)$event['id']; ?>;
-                var filename = 'event_' + eventId + '_qr.png';
-                
-                console.log('Initiating direct download for event ' + eventId);
-                
-                // Method 1: Use the hidden direct download link (most reliable)
-                var directLink = document.getElementById('directDownloadLink');
-                if (directLink) {
-                    directLink.click();
-                    console.log('Direct download link clicked');
-                    showDownloadSuccess(filename);
-                    return;
-                }
-                
-                // Method 2: Create direct download link programmatically
-                var downloadUrl = 'download_qr.php?event_id=' + eventId + '&_t=' + Date.now();
-                var a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = filename;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                
-                console.log('Direct download initiated');
-                showDownloadSuccess(filename);
-                
-            } catch (error) {
-                console.error('Direct download failed:', error);
-                
-                // Fallback: Try server-side QR code image
-                try {
-                    var serverQr = document.getElementById('serverQrCode');
-                    if (serverQr && serverQr.src) {
-                        var a = document.createElement('a');
-                        a.href = serverQr.src;
-                        a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                        a.style.display = 'none';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        console.log('Fallback server QR download completed');
-                        showDownloadSuccess('event_<?php echo (int)$event['id']; ?>_qr.png');
-                        return;
-                    }
-                } catch (fallbackError) {
-                    console.error('Fallback download failed:', fallbackError);
-                    
-                    // Final fallback: Generate QR data for download
-                    generateQrDataForDownload();
-                }
-            }
+            // Instant download - no delays, no checks, no fallbacks
+            var eventId = <?php echo (int)$event['id']; ?>;
+            var filename = 'event_' + eventId + '_qr.png';
+            var downloadUrl = 'download_qr.php?event_id=' + eventId;
+            
+            // Create and click download link immediately
+            var a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Show success message immediately
+            showDownloadSuccess(filename);
         }
         
         function downloadImage(src, filename) {
