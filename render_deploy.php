@@ -70,6 +70,65 @@ try {
             echo "<p style='color: green;'>✅ Announcements table created successfully</p>";
         }
         
+        // Ensure email queue tables exist
+        echo "<h3>📧 Ensuring Email Queue Tables Exist</h3>";
+        
+        $emailQueueTables = [
+            'email_queue' => "
+                CREATE TABLE IF NOT EXISTS email_queue (
+                    id SERIAL PRIMARY KEY,
+                    type VARCHAR(50) NOT NULL,
+                    subject VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'failed')),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    processed_at TIMESTAMP DEFAULT NULL
+                )
+            ",
+            'email_queue_items' => "
+                CREATE TABLE IF NOT EXISTS email_queue_items (
+                    id SERIAL PRIMARY KEY,
+                    queue_id INTEGER REFERENCES email_queue(id) ON DELETE CASCADE,
+                    member_id VARCHAR(50),
+                    member_name VARCHAR(255),
+                    member_email VARCHAR(255) NOT NULL,
+                    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'sent', 'failed')),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    processed_at TIMESTAMP DEFAULT NULL,
+                    error_message TEXT DEFAULT NULL
+                )
+            "
+        ];
+        
+        foreach ($emailQueueTables as $tableName => $createSQL) {
+            try {
+                $stmt = $db->query("SELECT COUNT(*) FROM $tableName");
+                echo "<p style='color: green;'>✅ $tableName table exists</p>";
+            } catch (Exception $e) {
+                echo "<p style='color: orange;'>🔧 Creating $tableName table...</p>";
+                $db->exec($createSQL);
+                echo "<p style='color: green;'>✅ $tableName table created successfully</p>";
+            }
+        }
+        
+        // Create indexes for email queue performance
+        echo "<h3>🔧 Creating Email Queue Indexes</h3>";
+        
+        $indexes = [
+            'idx_email_queue_status' => 'CREATE INDEX IF NOT EXISTS idx_email_queue_status ON email_queue(status)',
+            'idx_email_queue_items_status' => 'CREATE INDEX IF NOT EXISTS idx_email_queue_items_status ON email_queue_items(status)',
+            'idx_email_queue_items_queue_id' => 'CREATE INDEX IF NOT EXISTS idx_email_queue_items_queue_id ON email_queue_items(queue_id)'
+        ];
+        
+        foreach ($indexes as $indexName => $indexSQL) {
+            try {
+                $db->exec($indexSQL);
+                echo "<p style='color: green;'>✅ $indexName index created</p>";
+            } catch (Exception $e) {
+                echo "<p style='color: orange;'>⚠️ $indexName index warning: " . $e->getMessage() . "</p>";
+            }
+        }
+        
         // Run attendance migration
         echo "<h3>🔧 Running Attendance Migration</h3>";
         

@@ -34,33 +34,20 @@ if ($_POST) {
         $result = $stmt->execute([$title, $content]);
         
         if ($result) {
-            // Send email notification to all members
-            $notificationHelper = new NotificationHelper($db);
+            // Get the announcement ID
+            $announcementId = $db->lastInsertId();
             
-            $subject = "Important Announcement: " . $title;
+            // Queue email notification for async processing
+            require_once '../../config/async_notification_helper.php';
+            $asyncNotificationHelper = new AsyncNotificationHelper($db);
             
-            $message = "
-                <h3>Hello {MEMBER_NAME}!</h3>
-                <p>We have an important announcement for you:</p>
-                
-                <div style='background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;'>
-                    <h4 style='color: #28a745; margin-top: 0;'>" . htmlspecialchars($title) . "</h4>
-                    <div style='margin-top: 15px;'>
-                        " . nl2br(htmlspecialchars($content)) . "
-                    </div>
-                </div>
-                
-                <p>Please take note of this important information.</p>
-                <p>Best regards,<br>SmartUnion</p>
-            ";
-            
-            $notificationResult = $notificationHelper->sendToAllMembers($subject, $message, 'announcement');
+            $notificationResult = $asyncNotificationHelper->queueAnnouncementNotification($announcementId, $title, $content);
             
             // Log notification result
             if ($notificationResult['success']) {
-                error_log("Announcement notification sent: " . $notificationResult['sent'] . " emails sent, " . $notificationResult['failed'] . " failed");
+                error_log("Announcement queued for email processing: Queue ID " . $notificationResult['queue_id'] . ", " . $notificationResult['total_members'] . " members");
             } else {
-                error_log("Announcement notification failed: " . $notificationResult['error']);
+                error_log("Announcement email queue failed: " . $notificationResult['error']);
             }
             
             header('Location: index.php?added=1');

@@ -2,10 +2,13 @@ services:
   - type: web
     name: smartapp-web
     env: docker
-    plan: free
+    plan: starter
     dockerfilePath: ./dockerfile
     autoDeploy: true
     healthCheckPath: /health.php
+    scaling:
+      minInstances: 1
+      maxInstances: 3
     envVars:
       - key: DB_TYPE
         value: postgresql
