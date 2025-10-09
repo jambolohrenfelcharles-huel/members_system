@@ -50,6 +50,45 @@ try {
             echo "<p style='color: green;'>✅ PostgreSQL schema executed successfully</p>";
         }
         
+        // Ensure events table exists with all columns
+        echo "<h3>📅 Ensuring Events Table Exists</h3>";
+        
+        try {
+            $stmt = $db->query("SELECT COUNT(*) FROM events");
+            echo "<p style='color: green;'>✅ Events table exists</p>";
+            
+            // Check if place column exists
+            $stmt = $db->prepare("SELECT column_name FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'place'");
+            $stmt->execute();
+            $columnExists = $stmt->fetch();
+            
+            if (!$columnExists) {
+                echo "<p style='color: orange;'>🔧 Adding place column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN place VARCHAR(255) NOT NULL DEFAULT ''");
+                echo "<p style='color: green;'>✅ place column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ place column already exists</p>";
+            }
+            
+        } catch (Exception $e) {
+            echo "<p style='color: orange;'>🔧 Creating events table...</p>";
+            $createEventsSQL = "
+                CREATE TABLE IF NOT EXISTS events (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    place VARCHAR(255) NOT NULL,
+                    status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'ongoing', 'completed')),
+                    event_date TIMESTAMP NOT NULL,
+                    description TEXT,
+                    region VARCHAR(100),
+                    organizing_club VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ";
+            $db->exec($createEventsSQL);
+            echo "<p style='color: green;'>✅ Events table created successfully</p>";
+        }
+        
         // Ensure announcements table exists
         echo "<h3>📋 Ensuring Announcements Table Exists</h3>";
         
