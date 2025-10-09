@@ -19,35 +19,6 @@ if (!$event) {
     header('Location: index.php');
     exit();
 }
-
-// Dynamically update event status based on current date/time
-$today = date('Y-m-d');
-$eventDate = date('Y-m-d', strtotime($event['event_date']));
-$currentTime = time();
-$eventTime = strtotime($event['event_date']);
-
-// Update status based on current date/time
-$newStatus = $event['status'];
-if ($eventDate < $today) {
-    $newStatus = 'completed';
-} elseif ($eventDate == $today) {
-    // Check if event is happening today
-    $hoursDiff = ($eventTime - $currentTime) / 3600;
-    if ($hoursDiff <= 0 && $hoursDiff >= -8) { // Event is ongoing if within 8 hours
-        $newStatus = 'ongoing';
-    } else {
-        $newStatus = 'upcoming';
-    }
-} else {
-    $newStatus = 'upcoming';
-}
-
-// Update event status if it has changed
-if ($newStatus !== $event['status']) {
-    $updateStmt = $db->prepare("UPDATE events SET status = ? WHERE id = ?");
-    $updateStmt->execute([$newStatus, $event['id']]);
-    $event['status'] = $newStatus;
-}
 ?>
 
 <!DOCTYPE html>
@@ -172,29 +143,16 @@ if ($newStatus !== $event['status']) {
                                         <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary"><i class="fas fa-download me-1"></i>Download</button>
                                     </div>
                                     <div class="card-body text-center">
-                                        <div id="eventQr" class="d-inline-block bg-white p-3 rounded border" style="min-height: 200px; min-width: 200px; display: flex; align-items: center; justify-content: center;">
-                                            <div id="qrLoading" class="text-muted">
-                                                <i class="fas fa-spinner fa-spin me-2"></i>Generating QR Code...
+                                        <div id="eventQr" class="d-inline-block bg-white p-3 rounded" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Generating QR Code...</span>
                                             </div>
                                         </div>
                                         <p class="small text-muted mt-2">Scan to check-in to this event</p>
-                                        <p class="small text-info">Event Status: <strong><?php echo ucfirst($event['status']); ?></strong></p>
-                                    </div>
-                                </div>
-                            </div>
-                            <?php else: ?>
-                            <div class="col-lg-6">
-                                <div class="card mt-2">
-                                    <div class="card-header">
-                                        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>QR Code Status</h6>
-                                    </div>
-                                    <div class="card-body text-center">
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-clock me-2"></i>
-                                            QR Code will be available when the event is ongoing.
+                                        <div id="qrError" class="alert alert-warning d-none" role="alert">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            <span id="qrErrorMessage">QR Code generation failed. Please refresh the page.</span>
                                         </div>
-                                        <p class="small text-muted">Current Status: <strong><?php echo ucfirst($event['status']); ?></strong></p>
-                                        <p class="small text-muted">Event Date: <strong><?php echo date('F j, Y \a\t g:i A', strtotime($event['event_date'])); ?></strong></p>
                                     </div>
                                 </div>
                             </div>
@@ -252,27 +210,55 @@ if ($newStatus !== $event['status']) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Fallback QR Code library -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
-        (function(){
-            var container = document.getElementById('eventQr');
-            var loadingDiv = document.getElementById('qrLoading');
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing QR code...');
             
+            // Helper function to show QR error
+            function showQrError(message) {
+                var container = document.getElementById('eventQr');
+                var errorDiv = document.getElementById('qrError');
+                var errorMessage = document.getElementById('qrErrorMessage');
+                
+                if (container) {
+                    container.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>QR Code Error</div>';
+                }
+                
+                if (errorDiv && errorMessage) {
+                    errorMessage.textContent = message;
+                    errorDiv.classList.remove('d-none');
+                }
+            }
+            
+            var container = document.getElementById('eventQr');
             if (!container) {
                 console.log('QR container not found');
                 return;
             }
             
+            console.log('QR container found, checking QRCode library...');
+            
             // Check if QRCode library is loaded
             if (typeof QRCode === 'undefined') {
-                console.error('QRCode library not loaded');
-                if (loadingDiv) {
-                    loadingDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>QR Code library failed to load';
-                    loadingDiv.className = 'text-danger';
+                console.error('Primary QRCode library not loaded, trying fallback...');
+                
+                // Try fallback library
+                if (typeof QRCodeLib !== 'undefined') {
+                    console.log('Using fallback QRCode library...');
+                    generateQrWithFallback();
+                } else {
+                    console.error('Both QRCode libraries failed to load');
+                    showQrError('QR Code libraries failed to load. Please refresh the page.');
+                    return;
                 }
-                return;
+            } else {
+                console.log('Primary QRCode library loaded, generating QR code...');
+                generateQrWithPrimary();
             }
             
-            try {
+            function generateQrWithPrimary() {
                 var payload = {
                     type: 'attendance',
                     event_id: <?php echo (int)$event['id']; ?>,
@@ -281,57 +267,99 @@ if ($newStatus !== $event['status']) {
                 };
                 var text = JSON.stringify(payload);
                 
-                console.log('Generating QR code with payload:', payload);
-                
-                // Clear loading message
-                if (loadingDiv) {
-                    loadingDiv.style.display = 'none';
-                }
-                
-                var qr = new QRCode(container, {
-                    text: text,
-                    width: 200,
-                    height: 200,
-                    correctLevel: QRCode.CorrectLevel.M,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff"
-                });
-                
-                console.log('QR code generated successfully');
-
-                var btn = document.getElementById('downloadQrBtn');
-                if (btn) {
-                    btn.addEventListener('click', function(){
-                        console.log('Download QR button clicked');
-                        // qrcodejs renders a <img> or <canvas>; handle both
-                        var img = container.querySelector('img');
-                        var canvas = container.querySelector('canvas');
-                        if (img && img.src) {
-                            var a = document.createElement('a');
-                            a.href = img.src;
-                            a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                            a.click();
-                            console.log('Downloaded QR as image');
-                        } else if (canvas) {
-                            var a2 = document.createElement('a');
-                            a2.href = canvas.toDataURL('image/png');
-                            a2.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
-                            a2.click();
-                            console.log('Downloaded QR as canvas');
-                        } else {
-                            console.error('No QR code element found for download');
-                        }
+                try {
+                    var qr = new QRCode(container, {
+                        text: text,
+                        width: 192,
+                        height: 192,
+                        correctLevel: QRCode.CorrectLevel.M,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff"
                     });
-                }
-                
-            } catch (error) {
-                console.error('Error generating QR code:', error);
-                if (loadingDiv) {
-                    loadingDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Failed to generate QR Code';
-                    loadingDiv.className = 'text-danger';
+                    console.log('QR code generated successfully with primary library');
+                    
+                    // Add loading indicator
+                    container.style.minHeight = '192px';
+                    container.style.display = 'flex';
+                    container.style.alignItems = 'center';
+                    container.style.justifyContent = 'center';
+                    
+                } catch (error) {
+                    console.error('Error generating QR code with primary library:', error);
+                    console.log('Trying fallback library...');
+                    generateQrWithFallback();
                 }
             }
-        })();
+            
+            function generateQrWithFallback() {
+                var payload = {
+                    type: 'attendance',
+                    event_id: <?php echo (int)$event['id']; ?>,
+                    event_name: <?php echo json_encode($event['title']); ?>,
+                    ts: Date.now()
+                };
+                var text = JSON.stringify(payload);
+                
+                try {
+                    // Clear container first
+                    container.innerHTML = '';
+                    
+                    // Generate QR code with fallback library
+                    QRCodeLib.toCanvas(container, text, {
+                        width: 192,
+                        height: 192,
+                        color: {
+                            dark: '#000000',
+                            light: '#ffffff'
+                        }
+                    }, function (error) {
+                        if (error) {
+                            console.error('Error generating QR code with fallback library:', error);
+                            showQrError('Failed to generate QR code: ' + error.message);
+                        } else {
+                            console.log('QR code generated successfully with fallback library');
+                        }
+                    });
+                    
+                } catch (error) {
+                    console.error('Error generating QR code with fallback library:', error);
+                    showQrError('Failed to generate QR code: ' + error.message);
+                }
+            }
+
+            // Download button functionality
+            var btn = document.getElementById('downloadQrBtn');
+            if (btn) {
+                btn.addEventListener('click', function(){
+                    console.log('Download button clicked');
+                    
+                    // qrcodejs renders a <img> or <canvas>; handle both
+                    var img = container.querySelector('img');
+                    var canvas = container.querySelector('canvas');
+                    
+                    if (img && img.src) {
+                        var a = document.createElement('a');
+                        a.href = img.src;
+                        a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        console.log('QR code downloaded as image');
+                    } else if (canvas) {
+                        var a2 = document.createElement('a');
+                        a2.href = canvas.toDataURL('image/png');
+                        a2.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
+                        document.body.appendChild(a2);
+                        a2.click();
+                        document.body.removeChild(a2);
+                        console.log('QR code downloaded as canvas');
+                    } else {
+                        console.error('No QR code element found for download');
+                        alert('QR code not available for download');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>

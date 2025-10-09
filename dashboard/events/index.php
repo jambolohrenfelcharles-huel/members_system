@@ -289,11 +289,6 @@ if (isset($_GET['deleted'])) {
                                                         <a href="view.php?id=<?php echo $event['id']; ?>" class="btn btn-sm btn-outline-primary" title="View">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
-                                                        <?php if ($event['status'] === 'ongoing'): ?>
-                                                        <a href="view.php?id=<?php echo $event['id']; ?>#eventQr" class="btn btn-sm btn-outline-success" title="QR Code for Attendance">
-                                                            <i class="fas fa-qrcode"></i>
-                                                        </a>
-                                                        <?php endif; ?>
                                                         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
                                                         <a href="edit.php?id=<?php echo $event['id']; ?>" class="btn btn-sm btn-outline-warning" title="Edit">
                                                             <i class="fas fa-edit"></i>
