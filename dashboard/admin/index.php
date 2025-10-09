@@ -18,9 +18,11 @@ $db = $database->getConnection();
 $members_table = $database->getMembersTable();
 
 // Handle user management actions
-if (isset($_GET['action'])) {
-    $id = isset($_GET['id']) ? $_GET['id'] : null;
-    if ($_GET['action'] == 'delete_user' && $id) {
+if (isset($_POST['action'])) {
+    $id = isset($_POST['id']) ? $_POST['id'] : null;
+    $reason = isset($_POST['reason']) ? trim($_POST['reason']) : '';
+    
+    if ($_POST['action'] == 'delete_user' && $id) {
         if ($id != $_SESSION['user_id']) { // Prevent self-deletion
             $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
             $stmt->execute([$id]);
@@ -28,16 +30,22 @@ if (isset($_GET['action'])) {
             exit();
         }
     }
+    
     // Block user
-    if ($_GET['action'] == 'block_user' && $id) {
-        $stmt = $db->prepare("UPDATE users SET blocked = 1 WHERE id = ?");
-        $stmt->execute([$id]);
-        exit();
+    if ($_POST['action'] == 'block_user' && $id) {
+        if ($id != $_SESSION['user_id']) { // Prevent self-blocking
+            $stmt = $db->prepare("UPDATE users SET blocked = TRUE, blocked_reason = ?, blocked_at = CURRENT_TIMESTAMP WHERE id = ?");
+            $stmt->execute([$reason, $id]);
+            header('Location: index.php?blocked=1');
+            exit();
+        }
     }
+    
     // Unblock user
-    if ($_GET['action'] == 'unblock_user' && $id) {
-        $stmt = $db->prepare("UPDATE users SET blocked = 0 WHERE id = ?");
+    if ($_POST['action'] == 'unblock_user' && $id) {
+        $stmt = $db->prepare("UPDATE users SET blocked = FALSE, blocked_reason = NULL, blocked_at = NULL WHERE id = ?");
         $stmt->execute([$id]);
+        header('Location: index.php?unblocked=1');
         exit();
     }
 }
@@ -321,6 +329,8 @@ for ($i = 11; $i >= 0; $i--) {
                                         <th>Email</th>
                                         <th>Role</th>
                                         <th>Status</th>
+                                        <th>Blocked Reason</th>
+                                        <th>Blocked At</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -336,6 +346,22 @@ for ($i = 11; $i >= 0; $i--) {
                                                     <span class="badge bg-danger">Blocked</span>
                                                 <?php else: ?>
                                                     <span class="badge bg-success">Active</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($user['blocked']) && $user['blocked'] && !empty($user['blocked_reason'])): ?>
+                                                    <span class="text-danger" title="<?php echo htmlspecialchars($user['blocked_reason']); ?>">
+                                                        <?php echo htmlspecialchars(substr($user['blocked_reason'], 0, 30)) . (strlen($user['blocked_reason']) > 30 ? '...' : ''); ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($user['blocked']) && $user['blocked'] && !empty($user['blocked_at'])): ?>
+                                                    <small class="text-muted"><?php echo date('M j, Y g:i A', strtotime($user['blocked_at'])); ?></small>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
@@ -374,49 +400,114 @@ for ($i = 11; $i >= 0; $i--) {
                             });
                         });
                     }
-                    // Block/Unblock AJAX
-                    document.querySelectorAll('.btn-block-user, .btn-unblock-user').forEach(function(button) {
+                    // Block User AJAX
+                    document.querySelectorAll('.btn-block-user').forEach(function(button) {
                         button.addEventListener('click', function(e) {
                             e.preventDefault();
                             const userId = this.getAttribute('data-user-id');
+                            const username = this.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+                            
+                            // Prompt for blocking reason
+                            const reason = prompt(`Enter reason for blocking user "${username}":`);
+                            if (reason === null) return; // User cancelled
+                            
                             const row = this.closest('tr');
                             const statusCell = row.querySelector('td:nth-child(5)');
+                            const reasonCell = row.querySelector('td:nth-child(6)');
+                            const blockedAtCell = row.querySelector('td:nth-child(7)');
                             const blockBtn = row.querySelector('.btn-block-user');
                             const unblockBtn = row.querySelector('.btn-unblock-user');
                             const originalContent = this.innerHTML;
                             this.disabled = true;
                             this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                            let action = this.classList.contains('btn-block-user') ? 'block_user' : 'unblock_user';
-                            fetch(`?action=${action}&id=${userId}`)
-                                .then(response => response.text())
-                                .then(() => {
-                                    if (action === 'block_user') {
-                                        statusCell.innerHTML = '<span class="badge bg-danger">Blocked</span>';
-                                        blockBtn.disabled = true;
-                                        unblockBtn.disabled = false;
-                                        blockBtn.classList.add('disabled');
-                                        unblockBtn.classList.remove('disabled');
-                                        blockBtn.innerHTML = 'Block';
-                                        unblockBtn.innerHTML = 'Unblock';
-                                        showNotification('User blocked successfully!', 'warning');
-                                    } else {
-                                        statusCell.innerHTML = '<span class="badge bg-success">Active</span>';
-                                        blockBtn.disabled = false;
-                                        unblockBtn.disabled = true;
-                                        blockBtn.classList.remove('disabled');
-                                        unblockBtn.classList.add('disabled');
-                                        blockBtn.innerHTML = 'Block';
-                                        unblockBtn.innerHTML = 'Unblock';
-                                        showNotification('User unblocked successfully!', 'success');
-                                    }
-                                    this.disabled = false;
-                                })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    showNotification('Error updating user status', 'danger');
-                                    this.disabled = false;
-                                    this.innerHTML = originalContent;
-                                });
+                            
+                            // Create form data
+                            const formData = new FormData();
+                            formData.append('action', 'block_user');
+                            formData.append('id', userId);
+                            formData.append('reason', reason);
+                            
+                            fetch('', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => {
+                                if (response.ok) {
+                                    statusCell.innerHTML = '<span class="badge bg-danger">Blocked</span>';
+                                    reasonCell.innerHTML = `<span class="text-danger" title="${reason}">${reason.length > 30 ? reason.substring(0, 30) + '...' : reason}</span>`;
+                                    blockedAtCell.innerHTML = '<small class="text-muted">' + new Date().toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'}) + '</small>';
+                                    blockBtn.disabled = true;
+                                    unblockBtn.disabled = false;
+                                    blockBtn.classList.add('disabled');
+                                    unblockBtn.classList.remove('disabled');
+                                    blockBtn.innerHTML = 'Block';
+                                    unblockBtn.innerHTML = 'Unblock';
+                                    showNotification(`User "${username}" blocked successfully!`, 'warning');
+                                } else {
+                                    throw new Error('Block failed');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                this.disabled = false;
+                                this.innerHTML = originalContent;
+                                showNotification('An error occurred. Please try again.', 'danger');
+                            });
+                        });
+                    });
+                    
+                    // Unblock User AJAX
+                    document.querySelectorAll('.btn-unblock-user').forEach(function(button) {
+                        button.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const userId = this.getAttribute('data-user-id');
+                            const username = this.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+                            
+                            if (!confirm(`Are you sure you want to unblock user "${username}"?`)) {
+                                return;
+                            }
+                            
+                            const row = this.closest('tr');
+                            const statusCell = row.querySelector('td:nth-child(5)');
+                            const reasonCell = row.querySelector('td:nth-child(6)');
+                            const blockedAtCell = row.querySelector('td:nth-child(7)');
+                            const blockBtn = row.querySelector('.btn-block-user');
+                            const unblockBtn = row.querySelector('.btn-unblock-user');
+                            const originalContent = this.innerHTML;
+                            this.disabled = true;
+                            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                            
+                            // Create form data
+                            const formData = new FormData();
+                            formData.append('action', 'unblock_user');
+                            formData.append('id', userId);
+                            
+                            fetch('', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => {
+                                if (response.ok) {
+                                    statusCell.innerHTML = '<span class="badge bg-success">Active</span>';
+                                    reasonCell.innerHTML = '<span class="text-muted">-</span>';
+                                    blockedAtCell.innerHTML = '<span class="text-muted">-</span>';
+                                    blockBtn.disabled = false;
+                                    unblockBtn.disabled = true;
+                                    blockBtn.classList.remove('disabled');
+                                    unblockBtn.classList.add('disabled');
+                                    blockBtn.innerHTML = 'Block';
+                                    unblockBtn.innerHTML = 'Unblock';
+                                    showNotification(`User "${username}" unblocked successfully!`, 'success');
+                                } else {
+                                    throw new Error('Unblock failed');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                this.disabled = false;
+                                this.innerHTML = originalContent;
+                                showNotification('An error occurred. Please try again.', 'danger');
+                            });
                         });
                     });
                     // Delete AJAX

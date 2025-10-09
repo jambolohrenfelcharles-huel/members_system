@@ -112,6 +112,52 @@ try {
             }
         }
         
+        // Add user blocking functionality
+        echo "<h3>🔧 Adding User Blocking Functionality</h3>";
+        
+        $userBlockingColumns = ['blocked', 'blocked_reason', 'blocked_at'];
+        foreach ($userBlockingColumns as $column) {
+            $stmt = $db->prepare("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = ?");
+            $stmt->execute([$column]);
+            $columnExists = $stmt->fetch();
+            
+            if (!$columnExists) {
+                echo "<p style='color: orange;'>🔧 Adding $column column to users table...</p>";
+                
+                switch ($column) {
+                    case 'blocked':
+                        $db->exec("ALTER TABLE users ADD COLUMN blocked BOOLEAN DEFAULT FALSE");
+                        break;
+                    case 'blocked_reason':
+                        $db->exec("ALTER TABLE users ADD COLUMN blocked_reason TEXT DEFAULT NULL");
+                        break;
+                    case 'blocked_at':
+                        $db->exec("ALTER TABLE users ADD COLUMN blocked_at TIMESTAMP DEFAULT NULL");
+                        break;
+                }
+                
+                echo "<p style='color: green;'>✅ $column column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ $column column already exists</p>";
+            }
+        }
+        
+        // Create index for blocked users
+        try {
+            $db->exec("CREATE INDEX IF NOT EXISTS idx_users_blocked ON users(blocked)");
+            echo "<p style='color: green;'>✅ Index for blocked users created</p>";
+        } catch (Exception $e) {
+            echo "<p style='color: orange;'>⚠️ Index creation skipped: " . $e->getMessage() . "</p>";
+        }
+        
+        // Update existing users to have blocked = false
+        try {
+            $db->exec("UPDATE users SET blocked = FALSE WHERE blocked IS NULL");
+            echo "<p style='color: green;'>✅ Existing users updated with default blocked status</p>";
+        } catch (Exception $e) {
+            echo "<p style='color: orange;'>⚠️ User update skipped: " . $e->getMessage() . "</p>";
+        }
+        
     } else {
         echo "<h3>🐬 MySQL Setup</h3>";
         

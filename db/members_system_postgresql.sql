@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE,
     full_name VARCHAR(255),
     role VARCHAR(20) DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+    blocked BOOLEAN DEFAULT FALSE,
+    blocked_reason TEXT DEFAULT NULL,
+    blocked_at TIMESTAMP DEFAULT NULL,
     reset_token VARCHAR(100) DEFAULT NULL,
     reset_expires TIMESTAMP DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

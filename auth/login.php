@@ -14,20 +14,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $db = $database->getConnection();
     $username = $_POST['username'];
     $password = $_POST['password'];
-    $query = "SELECT id, username, password, role FROM users WHERE username = ?";
+    $query = "SELECT id, username, password, role, blocked, blocked_reason FROM users WHERE username = ?";
     $stmt = $db->prepare($query);
     $stmt->execute([$username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    
     if ($user && hash('sha256', $password) === $user['password']) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
-        if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-            echo json_encode(['success' => true]);
-            exit();
+        // Check if user is blocked
+        if (!empty($user['blocked']) && $user['blocked']) {
+            $error = 'Your account has been blocked. Reason: ' . ($user['blocked_reason'] ?: 'No reason provided');
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+                echo json_encode(['success' => false, 'error' => $error]);
+                exit();
+            }
         } else {
-            header('Location: ../dashboard/index.php');
-            exit();
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+                echo json_encode(['success' => true]);
+                exit();
+            } else {
+                header('Location: ../dashboard/index.php');
+                exit();
+            }
         }
     } else {
         $error = 'Invalid username or password';
