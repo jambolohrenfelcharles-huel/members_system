@@ -154,7 +154,40 @@ if (!$event) {
                                     </div>
                                     <div class="card-body text-center">
                                         <div id="eventQr" class="d-inline-block bg-white p-3 rounded" style="min-height: 200px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">
-                                            <!-- QR code will appear here immediately -->
+                                            <?php
+                                            // Server-side QR code generation as fallback
+                                            $qrPayload = [
+                                                'type' => 'attendance',
+                                                'event_id' => (int)$event['id'],
+                                                'event_name' => $event['title'],
+                                                'ts' => time()
+                                            ];
+                                            $qrText = json_encode($qrPayload);
+                                            
+                                            // Generate QR code using multiple fallback methods
+                                            $qrGenerated = false;
+                                            
+                                            // Method 1: Try Google Charts API
+                                            $googleQrUrl = 'https://chart.googleapis.com/chart?chs=192x192&cht=qr&chl=' . urlencode($qrText);
+                                            
+                                            // Method 2: Try QR Server API
+                                            $qrServerUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=192x192&data=' . urlencode($qrText);
+                                            
+                                            // Method 3: Try QR Code Generator API
+                                            $qrGeneratorUrl = 'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=192';
+                                            
+                                            // Test which API is accessible
+                                            $testUrl = $qrServerUrl; // Default to QR Server
+                                            ?>
+                                            <img id="serverQrCode" src="<?php echo $testUrl; ?>" alt="QR Code for Event <?php echo $event['id']; ?>" style="max-width: 192px; height: auto;" onerror="this.style.display='none'; document.getElementById('clientQrCode').style.display='block';" />
+                                            <div id="clientQrCode" style="display: none;"></div>
+                                            <div id="qrFallback" style="display: none; text-align: center; padding: 20px;">
+                                                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border: 2px dashed #dee2e6;">
+                                                    <h6>QR Code Data</h6>
+                                                    <code style="word-break: break-all; font-size: 12px;"><?php echo htmlspecialchars($qrText); ?></code>
+                                                    <p class="small text-muted mt-2">Copy this data to generate QR code manually</p>
+                                                </div>
+                                            </div>
                                         </div>
                                         <p class="small text-muted mt-2">Scan to check-in to this event</p>
                                         <div id="qrError" class="alert alert-warning d-none" role="alert">
@@ -226,19 +259,14 @@ if (!$event) {
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script>
-        // QR Code initialization function - immediate display
+        // QR Code initialization function - multiple fallback methods
         function initializeQrCode() {
-            console.log('Initializing QR code for immediate display...');
+            console.log('Initializing QR code with multiple fallback methods...');
             
             // Helper function to show QR error
             function showQrError(message) {
-                var container = document.getElementById('eventQr');
                 var errorDiv = document.getElementById('qrError');
                 var errorMessage = document.getElementById('qrErrorMessage');
-                
-                if (container) {
-                    container.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>QR Code Error</div>';
-                }
                 
                 if (errorDiv && errorMessage) {
                     errorMessage.textContent = message;
@@ -252,28 +280,69 @@ if (!$event) {
                 return;
             }
             
-            console.log('QR container found, generating QR code immediately...');
+            console.log('QR container found, checking QR code availability...');
             
-            // Check for cached QR code first for instant display
-            var cacheKey = 'qr_event_<?php echo (int)$event['id']; ?>';
-            var cachedQr = localStorage.getItem(cacheKey);
+            // Check server-side QR code
+            var serverQr = document.getElementById('serverQrCode');
+            var clientQr = document.getElementById('clientQrCode');
+            var qrFallback = document.getElementById('qrFallback');
             
-            if (cachedQr) {
-                try {
-                    var cachedData = JSON.parse(cachedQr);
-                    // Check if cache is still valid (within 1 hour)
-                    if (Date.now() - cachedData.timestamp < 3600000) {
-                        console.log('Using cached QR code for instant display');
-                        container.innerHTML = cachedData.qrHtml;
-                        setupDownloadButton(container);
-                        return;
+            if (serverQr) {
+                console.log('Server-side QR code found');
+                
+                // Test if server-side QR code loaded successfully
+                serverQr.onload = function() {
+                    console.log('Server-side QR code loaded successfully');
+                    serverQr.style.display = 'block';
+                    
+                    // Try to enhance with client-side QR code if libraries are available
+                    if (typeof QRCode !== 'undefined' || typeof QRCodeLib !== 'undefined') {
+                        console.log('Client-side libraries available, enhancing QR code...');
+                        setTimeout(enhanceWithClientQr, 1000); // Delay to ensure server QR is visible first
                     }
-                } catch (e) {
-                    console.log('Invalid cached QR code, regenerating...');
-                }
+                };
+                
+                serverQr.onerror = function() {
+                    console.log('Server-side QR code failed to load, trying client-side...');
+                    serverQr.style.display = 'none';
+                    
+                    // Try client-side generation
+                    if (typeof QRCode !== 'undefined' || typeof QRCodeLib !== 'undefined') {
+                        console.log('Generating client-side QR code...');
+                        generateClientQr();
+                    } else {
+                        console.log('No QR code libraries available, showing fallback data');
+                        showQrFallback();
+                    }
+                };
+                
+                // Set a timeout to check if QR code loaded
+                setTimeout(function() {
+                    if (serverQr.style.display !== 'none' && serverQr.complete && serverQr.naturalHeight > 0) {
+                        console.log('Server-side QR code confirmed working');
+                    } else {
+                        console.log('Server-side QR code may have failed, checking alternatives...');
+                    }
+                }, 2000);
+                
+            } else {
+                console.log('Server-side QR code not found, generating client-side...');
+                generateClientQr();
             }
             
-            // Generate QR code immediately
+            // Download button functionality
+            setupDownloadButton(container);
+        }
+        
+        function showQrFallback() {
+            var qrFallback = document.getElementById('qrFallback');
+            if (qrFallback) {
+                qrFallback.style.display = 'block';
+                console.log('Showing QR code fallback data');
+            }
+        }
+        
+        function enhanceWithClientQr() {
             var payload = {
                 type: 'attendance',
                 event_id: <?php echo (int)$event['id']; ?>,
@@ -282,21 +351,52 @@ if (!$event) {
             };
             var text = JSON.stringify(payload);
             
-            // Try primary library first
             if (typeof QRCode !== 'undefined') {
-                console.log('Generating QR code with primary library...');
-                generateQrWithPrimary(text, container);
+                try {
+                    var clientQr = document.getElementById('clientQrCode');
+                    var qr = new QRCode(clientQr, {
+                        text: text,
+                        width: 192,
+                        height: 192,
+                        correctLevel: QRCode.CorrectLevel.M,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff"
+                    });
+                    console.log('Client-side QR code generated successfully');
+                    
+                    // Cache the QR code
+                    cacheQrCode(clientQr);
+                    
+                    // Show client-side QR code, hide server-side
+                    document.getElementById('serverQrCode').style.display = 'none';
+                    clientQr.style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Client-side QR generation failed:', error);
+                    // Keep server-side QR code visible
+                }
+            }
+        }
+        
+        function generateClientQr() {
+            var payload = {
+                type: 'attendance',
+                event_id: <?php echo (int)$event['id']; ?>,
+                event_name: <?php echo json_encode($event['title']); ?>,
+                ts: Date.now()
+            };
+            var text = JSON.stringify(payload);
+            
+            if (typeof QRCode !== 'undefined') {
+                console.log('Generating client-side QR code...');
+                generateQrWithPrimary(text, document.getElementById('eventQr'));
             } else if (typeof QRCodeLib !== 'undefined') {
                 console.log('Generating QR code with fallback library...');
-                generateQrWithFallback(text, container);
+                generateQrWithFallback(text, document.getElementById('eventQr'));
             } else {
                 console.error('Both QRCode libraries failed to load');
-                showQrError('QR Code libraries failed to load. Please refresh the page.');
-                return;
+                showQrError('QR Code libraries failed to load. Server-side QR code should be visible.');
             }
-            
-            // Download button functionality
-            setupDownloadButton(container);
         }
         
         function generateQrWithPrimary(text, container) {
@@ -380,7 +480,45 @@ if (!$event) {
                 btn.addEventListener('click', function(){
                     console.log('Download button clicked');
                     
-                    // qrcodejs renders a <img> or <canvas>; handle both
+                    // Check for server-side QR code first
+                    var serverQr = document.getElementById('serverQrCode');
+                    if (serverQr && serverQr.src) {
+                        var a = document.createElement('a');
+                        a.href = serverQr.src;
+                        a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        console.log('Server-side QR code downloaded');
+                        return;
+                    }
+                    
+                    // Check for client-side QR code
+                    var clientQr = document.getElementById('clientQrCode');
+                    if (clientQr) {
+                        var img = clientQr.querySelector('img');
+                        var canvas = clientQr.querySelector('canvas');
+                        
+                        if (img && img.src) {
+                            var a = document.createElement('a');
+                            a.href = img.src;
+                            a.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            console.log('Client-side QR code downloaded as image');
+                        } else if (canvas) {
+                            var a2 = document.createElement('a');
+                            a2.href = canvas.toDataURL('image/png');
+                            a2.download = 'event_<?php echo (int)$event['id']; ?>_qr.png';
+                            document.body.appendChild(a2);
+                            a2.click();
+                            document.body.removeChild(a2);
+                            console.log('Client-side QR code downloaded as canvas');
+                        }
+                    }
+                    
+                    // Fallback: check container for any QR code
                     var img = container.querySelector('img');
                     var canvas = container.querySelector('canvas');
                     
@@ -401,8 +539,15 @@ if (!$event) {
                         document.body.removeChild(a2);
                         console.log('QR code downloaded as canvas');
                     } else {
-                        console.error('No QR code element found for download');
-                        alert('QR code not available for download');
+                        // Check if fallback data is available
+                        var qrFallback = document.getElementById('qrFallback');
+                        if (qrFallback && qrFallback.style.display !== 'none') {
+                            console.log('No QR code image available, but fallback data is shown');
+                            alert('QR code image not available for download. Please copy the QR code data manually.');
+                        } else {
+                            console.error('No QR code element found for download');
+                            alert('QR code not available for download');
+                        }
                     }
                 });
             }
