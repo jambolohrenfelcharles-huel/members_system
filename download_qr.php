@@ -1,11 +1,17 @@
 <?php
 /**
- * Fast QR Code Download Endpoint
- * Optimized server-side QR code download for Render deployment
+ * Render-Optimized QR Code Download Endpoint
+ * Specifically designed to work reliably on Render deployment
  */
 
-// Enable output buffering for faster response
-ob_start();
+// Disable any output buffering that might interfere
+if (ob_get_level()) {
+    ob_end_clean();
+}
+
+// Set error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 try {
     // Get event ID from request
@@ -42,92 +48,103 @@ try {
     ];
     $qrText = json_encode($qrPayload);
     
-    // Check for cached QR code first
-    $cacheDir = __DIR__ . '/uploads/qr_cache/';
-    if (!is_dir($cacheDir)) {
-        mkdir($cacheDir, 0755, true);
-    }
+    // Render-specific QR code generation - use multiple APIs with better error handling
+    $qrImage = null;
+    $qrApis = [
+        'QR Server' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($qrText),
+        'QuickChart' => 'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=300',
+        'Google Charts' => 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=' . urlencode($qrText),
+        'QR Code API' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($qrText)
+    ];
     
-    $cacheFile = $cacheDir . 'event_' . $eventId . '_qr.png';
-    $cacheKey = md5($qrText);
-    $cacheFileWithKey = $cacheDir . 'event_' . $eventId . '_' . $cacheKey . '_qr.png';
-    
-    // Check if cached file exists and is recent (within 1 hour)
-    if (file_exists($cacheFileWithKey) && (time() - filemtime($cacheFileWithKey)) < 3600) {
-        // Serve cached file instantly
-        header('Content-Type: image/png');
-        header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
-        header('Content-Length: ' . filesize($cacheFileWithKey));
-        header('Cache-Control: public, max-age=3600');
-        header('ETag: "' . $cacheKey . '"');
-        header('X-Download-Instant: true');
-        
-        // Clear output buffer and send cached file immediately
-        ob_end_clean();
-        readfile($cacheFileWithKey);
-        exit;
-    }
-    
-    // Generate QR code URL using QR Server API (smaller size for faster download)
-    $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=' . urlencode($qrText);
-    
-    // Set response headers for instant download
-    header('Content-Type: image/png');
-    header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
-    header('Cache-Control: public, max-age=3600');
-    header('ETag: "' . $cacheKey . '"');
-    header('X-Download-Instant: true');
-    
-    // Fetch QR code image from API with optimized settings
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 10, // Increased timeout for reliability
-            'user_agent' => 'SmartApp QR Downloader',
-            'method' => 'GET',
-            'header' => [
-                'Accept: image/png',
-                'Connection: close'
-            ]
-        ]
-    ]);
-    
-    $qrImage = file_get_contents($qrUrl, false, $context);
-    
-    if ($qrImage === false) {
-        // Try alternative QR code API
-        $altQrUrl = 'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=256';
-        $qrImage = file_get_contents($altQrUrl, false, $context);
-        
-        if ($qrImage === false) {
-            // Try Google Charts API as final fallback
-            $googleQrUrl = 'https://chart.googleapis.com/chart?chs=256x256&cht=qr&chl=' . urlencode($qrText);
-            $qrImage = file_get_contents($googleQrUrl, false, $context);
+    // Try each API with proper error handling
+    foreach ($qrApis as $apiName => $apiUrl) {
+        try {
+            // Create context with Render-optimized settings
+            $context = stream_context_create([
+                'http' => [
+                    'timeout' => 15, // Longer timeout for Render
+                    'user_agent' => 'SmartApp-Render-QR-Downloader/1.0',
+                    'method' => 'GET',
+                    'header' => [
+                        'Accept: image/png,image/*,*/*',
+                        'Connection: keep-alive',
+                        'Cache-Control: no-cache'
+                    ],
+                    'ignore_errors' => true // Don't fail on HTTP errors
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ]
+            ]);
             
-            if ($qrImage === false) {
-                throw new Exception('Failed to generate QR code from all APIs');
+            $qrImage = file_get_contents($apiUrl, false, $context);
+            
+            if ($qrImage !== false && strlen($qrImage) > 100) { // Ensure we got actual image data
+                error_log("QR Code generated successfully using $apiName API");
+                break;
+            } else {
+                error_log("QR Code generation failed with $apiName API");
+                $qrImage = null;
             }
+        } catch (Exception $e) {
+            error_log("QR Code API $apiName error: " . $e->getMessage());
+            $qrImage = null;
         }
     }
     
-    // Cache the QR code for future requests
-    file_put_contents($cacheFileWithKey, $qrImage);
+    // If all APIs failed, create a simple QR code using a different approach
+    if ($qrImage === null || strlen($qrImage) < 100) {
+        error_log("All QR APIs failed, creating fallback QR code");
+        
+        // Create a simple QR code using a different method
+        $fallbackUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($qrText) . '&format=png&ecc=M';
+        $qrImage = @file_get_contents($fallbackUrl);
+        
+        if ($qrImage === false || strlen($qrImage) < 100) {
+            // Create a minimal QR code as last resort
+            $minimalUrl = 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=' . urlencode($qrText) . '&choe=UTF-8';
+            $qrImage = @file_get_contents($minimalUrl);
+        }
+    }
     
-    // Set content length
+    if ($qrImage === false || strlen($qrImage) < 100) {
+        throw new Exception('Failed to generate QR code from all available APIs');
+    }
+    
+    // Set headers for Render-optimized download
+    header('Content-Type: image/png');
+    header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
     header('Content-Length: ' . strlen($qrImage));
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('X-Render-QR-Download: success');
     
-    // Clear output buffer and send image
-    ob_end_clean();
+    // Output the QR code image
     echo $qrImage;
     
-} catch (Exception $e) {
-    // Reset headers for error response
-    ob_end_clean();
-    header('Content-Type: application/json');
-    http_response_code(400);
+    // Log successful download
+    error_log("QR Code download successful for event $eventId, size: " . strlen($qrImage) . " bytes");
     
+} catch (Exception $e) {
+    // Clear any previous headers
+    if (!headers_sent()) {
+        header('Content-Type: application/json');
+        http_response_code(400);
+    }
+    
+    // Log the error
+    error_log("QR Code download error: " . $e->getMessage());
+    
+    // Return error response
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => $e->getMessage(),
+        'event_id' => $eventId ?? 0
     ]);
 }
 ?>

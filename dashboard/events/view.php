@@ -150,8 +150,8 @@ if (!$event) {
                                 <div class="card mt-2">
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i>Attendance QR Code</h6>
-                                        <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download</button>
-                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" class="btn btn-sm btn-success ms-2">
+                                        <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download QR</button>
+                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" target="_blank" class="btn btn-sm btn-success ms-2">
                                             <i class="fas fa-download me-1"></i>Direct Download
                                         </a>
                                     </div>
@@ -494,26 +494,97 @@ if (!$event) {
             var eventId = <?php echo (int)$event['id']; ?>;
             var filename = 'event_' + eventId + '_qr.png';
             
-            console.log('Starting QR code download for event ' + eventId);
+            console.log('Starting Render-optimized QR code download for event ' + eventId);
             
-            // Method 1: Try direct download link first (most reliable)
+            // Method 1: Try Render-optimized direct download (most reliable for Render)
             try {
                 var downloadUrl = 'download_qr.php?event_id=' + eventId + '&_t=' + Date.now();
+                
+                // Create a more robust download link for Render
                 var a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = filename;
                 a.style.display = 'none';
+                a.target = '_blank'; // Add target for Render compatibility
+                
+                // Add to DOM, click, and remove
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
-                console.log('Direct QR code download initiated');
+                
+                // Clean up after a short delay
+                setTimeout(function() {
+                    if (document.body.contains(a)) {
+                        document.body.removeChild(a);
+                    }
+                }, 1000);
+                
+                console.log('Render-optimized QR code download initiated');
                 showDownloadSuccess(filename);
                 return;
             } catch (error) {
-                console.error('Direct download failed:', error);
+                console.error('Render direct download failed:', error);
             }
             
-            // Method 2: Try server QR image download
+            // Method 2: Try fetch API with blob handling (Render-friendly)
+            try {
+                var downloadUrl = 'download_qr.php?event_id=' + eventId;
+                
+                fetch(downloadUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'image/png,image/*,*/*',
+                        'Cache-Control': 'no-cache'
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    if (blob && blob.size > 100) {
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        setTimeout(function() {
+                            if (document.body.contains(a)) {
+                                document.body.removeChild(a);
+                            }
+                            URL.revokeObjectURL(url);
+                        }, 1000);
+                        
+                        console.log('Fetch API QR download completed');
+                        showDownloadSuccess(filename);
+                        return;
+                    } else {
+                        throw new Error('Invalid QR code blob received');
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch API download failed:', error);
+                    // Fall back to server QR image
+                    downloadServerQrImage();
+                });
+                
+                return; // Exit early for fetch method
+            } catch (error) {
+                console.error('Fetch API not supported:', error);
+                // Fall back to server QR image
+                downloadServerQrImage();
+            }
+        }
+        
+        function downloadServerQrImage() {
+            var eventId = <?php echo (int)$event['id']; ?>;
+            var filename = 'event_' + eventId + '_qr.png';
+            
+            // Method 3: Try server QR image download
             try {
                 var serverQr = document.getElementById('serverQrCode');
                 if (serverQr && serverQr.src) {
@@ -521,9 +592,16 @@ if (!$event) {
                     a.href = serverQr.src;
                     a.download = filename;
                     a.style.display = 'none';
+                    a.target = '_blank';
                     document.body.appendChild(a);
                     a.click();
-                    document.body.removeChild(a);
+                    
+                    setTimeout(function() {
+                        if (document.body.contains(a)) {
+                            document.body.removeChild(a);
+                        }
+                    }, 1000);
+                    
                     console.log('Server QR image download completed');
                     showDownloadSuccess(filename);
                     return;
@@ -532,7 +610,7 @@ if (!$event) {
                 console.error('Server QR image download failed:', error);
             }
             
-            // Method 3: Try client-side QR code download
+            // Method 4: Try client-side QR code download
             try {
                 var clientQr = document.getElementById('clientQrCode');
                 if (clientQr) {
@@ -544,29 +622,43 @@ if (!$event) {
                         a.href = img.src;
                         a.download = filename;
                         a.style.display = 'none';
+                        a.target = '_blank';
                         document.body.appendChild(a);
                         a.click();
-                        document.body.removeChild(a);
+                        
+                        setTimeout(function() {
+                            if (document.body.contains(a)) {
+                                document.body.removeChild(a);
+                            }
+                        }, 1000);
+                        
                         console.log('Client QR image download completed');
                         showDownloadSuccess(filename);
                         return;
                     } else if (canvas) {
                         canvas.toBlob(function(blob) {
-                            if (blob) {
+                            if (blob && blob.size > 100) {
                                 var url = URL.createObjectURL(blob);
                                 var a = document.createElement('a');
                                 a.href = url;
                                 a.download = filename;
                                 a.style.display = 'none';
+                                a.target = '_blank';
                                 document.body.appendChild(a);
                                 a.click();
-                                document.body.removeChild(a);
-                                URL.revokeObjectURL(url);
+                                
+                                setTimeout(function() {
+                                    if (document.body.contains(a)) {
+                                        document.body.removeChild(a);
+                                    }
+                                    URL.revokeObjectURL(url);
+                                }, 1000);
+                                
                                 console.log('Canvas QR download completed');
                                 showDownloadSuccess(filename);
                                 return;
                             }
-                        }, 'image/png');
+                        }, 'image/png', 0.9);
                         return;
                     }
                 }
@@ -574,7 +666,7 @@ if (!$event) {
                 console.error('Client QR download failed:', error);
             }
             
-            // Method 4: Final fallback - generate QR data
+            // Method 5: Final fallback - generate QR data
             console.log('All QR code download methods failed, generating QR data');
             generateQrDataForDownload();
         }
