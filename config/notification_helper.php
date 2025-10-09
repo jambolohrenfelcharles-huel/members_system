@@ -3,15 +3,15 @@
 
 require_once 'email_config.php';
 
-// Dynamic table name for PostgreSQL compatibility
-$members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
 require_once 'smtp_email.php';
 
 class NotificationHelper {
     private $db;
+    private $members_table;
     
     public function __construct($database) {
         $this->db = $database;
+        $this->members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
     }
     
     /**
@@ -22,7 +22,7 @@ class NotificationHelper {
             // Get all active members with email addresses
             $stmt = $this->db->prepare("
                 SELECT name, email 
-                FROM $members_table 
+                FROM {$this->members_table} 
                 WHERE status = 'active' 
                 AND email IS NOT NULL 
                 AND email != ''
@@ -67,7 +67,7 @@ class NotificationHelper {
         try {
             $stmt = $this->db->prepare("
                 SELECT name, email 
-                FROM $members_table 
+                FROM {$this->members_table} 
                 WHERE status = 'active' 
                 AND region = ? 
                 AND email IS NOT NULL 
@@ -118,9 +118,9 @@ class NotificationHelper {
             $placeholders = str_repeat('?,', count($memberIds) - 1) . '?';
             $stmt = $this->db->prepare("
                 SELECT name, email 
-                FROM $members_table 
+                FROM {$this->members_table} 
                 WHERE id IN ($placeholders) 
-                AND status = 'active' 
+                AND status = 'active'
                 AND email IS NOT NULL 
                 AND email != ''
             ");
