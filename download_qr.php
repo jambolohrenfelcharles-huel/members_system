@@ -70,11 +70,12 @@ try {
     // Generate QR code URL using QR Server API (smaller size for faster download)
     $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=' . urlencode($qrText);
     
-    // Set response headers for download
+    // Set response headers for direct download
     header('Content-Type: image/png');
     header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
     header('Cache-Control: public, max-age=3600');
     header('ETag: "' . $cacheKey . '"');
+    header('X-Download-Optimized: true');
     
     // Fetch QR code image from API with optimized settings
     $context = stream_context_create([
