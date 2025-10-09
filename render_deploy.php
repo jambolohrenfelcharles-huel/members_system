@@ -57,17 +57,81 @@ try {
             $stmt = $db->query("SELECT COUNT(*) FROM events");
             echo "<p style='color: green;'>✅ Events table exists</p>";
             
-            // Check if place column exists
-            $stmt = $db->prepare("SELECT column_name FROM information_schema.columns WHERE table_name = 'events' AND column_name = 'place'");
+            // Check table structure and fix any issues
+            $stmt = $db->prepare("SELECT column_name FROM information_schema.columns WHERE table_name = 'events' ORDER BY ordinal_position");
             $stmt->execute();
-            $columnExists = $stmt->fetch();
+            $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
             
-            if (!$columnExists) {
+            echo "<p><strong>Current events table columns:</strong> " . implode(', ', $columns) . "</p>";
+            
+            // Check if we have both name and title columns (schema mismatch)
+            $hasName = in_array('name', $columns);
+            $hasTitle = in_array('title', $columns);
+            
+            if ($hasTitle && !$hasName) {
+                echo "<p style='color: orange;'>🔧 Renaming title column to name...</p>";
+                $db->exec("ALTER TABLE events RENAME COLUMN title TO name");
+                echo "<p style='color: green;'>✅ title column renamed to name successfully</p>";
+            } elseif (!$hasName && !$hasTitle) {
+                echo "<p style='color: orange;'>🔧 Adding name column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN name VARCHAR(255) NOT NULL DEFAULT ''");
+                echo "<p style='color: green;'>✅ name column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ name column already exists</p>";
+            }
+            
+            // Check if place column exists
+            if (!in_array('place', $columns)) {
                 echo "<p style='color: orange;'>🔧 Adding place column to events table...</p>";
                 $db->exec("ALTER TABLE events ADD COLUMN place VARCHAR(255) NOT NULL DEFAULT ''");
                 echo "<p style='color: green;'>✅ place column added successfully</p>";
             } else {
                 echo "<p style='color: green;'>✅ place column already exists</p>";
+            }
+            
+            // Check if event_date column exists
+            if (!in_array('event_date', $columns)) {
+                echo "<p style='color: orange;'>🔧 Adding event_date column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN event_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
+                echo "<p style='color: green;'>✅ event_date column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ event_date column already exists</p>";
+            }
+            
+            // Check if status column exists
+            if (!in_array('status', $columns)) {
+                echo "<p style='color: orange;'>🔧 Adding status column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'ongoing', 'completed'))");
+                echo "<p style='color: green;'>✅ status column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ status column already exists</p>";
+            }
+            
+            // Check if description column exists
+            if (!in_array('description', $columns)) {
+                echo "<p style='color: orange;'>🔧 Adding description column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN description TEXT");
+                echo "<p style='color: green;'>✅ description column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ description column already exists</p>";
+            }
+            
+            // Check if region column exists
+            if (!in_array('region', $columns)) {
+                echo "<p style='color: orange;'>🔧 Adding region column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN region VARCHAR(100)");
+                echo "<p style='color: green;'>✅ region column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ region column already exists</p>";
+            }
+            
+            // Check if organizing_club column exists
+            if (!in_array('organizing_club', $columns)) {
+                echo "<p style='color: orange;'>🔧 Adding organizing_club column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN organizing_club VARCHAR(255)");
+                echo "<p style='color: green;'>✅ organizing_club column added successfully</p>";
+            } else {
+                echo "<p style='color: green;'>✅ organizing_club column already exists</p>";
             }
             
         } catch (Exception $e) {
