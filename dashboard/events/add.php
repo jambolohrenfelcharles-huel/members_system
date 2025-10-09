@@ -47,7 +47,7 @@ if ($_POST) {
             $status = 'upcoming';
         }
         
-        $query = "INSERT INTO events (name, place, status, event_date, description, region, organizing_club) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $query = "INSERT INTO events (title, place, status, event_date, description, region, organizing_club) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $db->prepare($query);
         $result = $stmt->execute([$name, $place, $status, $event_date, $description, $region, $organizing_club]);

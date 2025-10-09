@@ -29,7 +29,7 @@ ON CONFLICT (username) DO UPDATE SET
 -- Events Table
 CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,         
+    title VARCHAR(255) NOT NULL,         
     place VARCHAR(255) NOT NULL,        
     status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'ongoing', 'completed')),
     event_date TIMESTAMP NOT NULL,       

@@ -68,16 +68,16 @@ try {
             $hasName = in_array('name', $columns);
             $hasTitle = in_array('title', $columns);
             
-            if ($hasTitle && !$hasName) {
-                echo "<p style='color: orange;'>🔧 Renaming title column to name...</p>";
-                $db->exec("ALTER TABLE events RENAME COLUMN title TO name");
-                echo "<p style='color: green;'>✅ title column renamed to name successfully</p>";
+            if ($hasName && !$hasTitle) {
+                echo "<p style='color: orange;'>🔧 Renaming name column to title...</p>";
+                $db->exec("ALTER TABLE events RENAME COLUMN name TO title");
+                echo "<p style='color: green;'>✅ name column renamed to title successfully</p>";
             } elseif (!$hasName && !$hasTitle) {
-                echo "<p style='color: orange;'>🔧 Adding name column to events table...</p>";
-                $db->exec("ALTER TABLE events ADD COLUMN name VARCHAR(255) NOT NULL DEFAULT ''");
-                echo "<p style='color: green;'>✅ name column added successfully</p>";
+                echo "<p style='color: orange;'>🔧 Adding title column to events table...</p>";
+                $db->exec("ALTER TABLE events ADD COLUMN title VARCHAR(255) NOT NULL DEFAULT ''");
+                echo "<p style='color: green;'>✅ title column added successfully</p>";
             } else {
-                echo "<p style='color: green;'>✅ name column already exists</p>";
+                echo "<p style='color: green;'>✅ title column already exists</p>";
             }
             
             // Check if place column exists
@@ -139,7 +139,7 @@ try {
             $createEventsSQL = "
                 CREATE TABLE IF NOT EXISTS events (
                     id SERIAL PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
                     place VARCHAR(255) NOT NULL,
                     status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'ongoing', 'completed')),
                     event_date TIMESTAMP NOT NULL,

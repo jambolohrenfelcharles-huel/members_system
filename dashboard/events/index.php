@@ -52,7 +52,7 @@ $params = [];
 if (!empty($search) || !empty($status_filter) || !empty($region_filter)) {
     $conditions = [];
     if (!empty($search)) {
-        $conditions[] = "(name LIKE ? OR place LIKE ? OR description LIKE ?)";
+        $conditions[] = "(title LIKE ? OR place LIKE ? OR description LIKE ?)";
         $searchTerm = "%$search%";
         $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
     }
@@ -248,7 +248,7 @@ if (isset($_GET['deleted'])) {
                                             <tr>
                                                 <td>
                                                     <div>
-                                                        <div class="fw-bold"><?php echo htmlspecialchars($event['name']); ?></div>
+                                                        <div class="fw-bold"><?php echo htmlspecialchars($event['title']); ?></div>
                                                         <small class="text-muted"><?php echo htmlspecialchars(substr($event['description'], 0, 100)) . (strlen($event['description']) > 100 ? '...' : ''); ?></small>
                                                     </div>
                                                 </td>

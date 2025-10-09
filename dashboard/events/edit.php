@@ -56,7 +56,7 @@ if ($_POST) {
             $status = 'upcoming';
         }
         
-        $query = "UPDATE events SET name=?, place=?, status=?, event_date=?, description=?, region=?, organizing_club=? WHERE id=?";
+        $query = "UPDATE events SET title=?, place=?, status=?, event_date=?, description=?, region=?, organizing_club=? WHERE id=?";
         
         $stmt = $db->prepare($query);
         $result = $stmt->execute([$name, $place, $status, $event_date, $description, $region, $organizing_club, $id]);
@@ -115,7 +115,7 @@ if ($_POST) {
                         <form method="POST">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Event Name *</label>
-                                <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($event['name']); ?>" required>
+                                <input type="text" class="form-control" id="name" name="name" value="<?php echo htmlspecialchars($event['title']); ?>" required>
                             </div>
 
                             <div class="row">

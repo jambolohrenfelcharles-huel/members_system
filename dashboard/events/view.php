@@ -53,7 +53,7 @@ if (!$event) {
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">
-                                <i class="fas fa-calendar me-2"></i><?php echo htmlspecialchars($event['name']); ?>
+                                <i class="fas fa-calendar me-2"></i><?php echo htmlspecialchars($event['title']); ?>
                             </h5>
                             <span class="badge <?php 
                                 echo $event['status'] == 'upcoming' ? 'bg-warning' : 
@@ -68,7 +68,7 @@ if (!$event) {
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Event Name</label>
-                                    <p class="form-control-plaintext"><?php echo htmlspecialchars($event['name']); ?></p>
+                                    <p class="form-control-plaintext"><?php echo htmlspecialchars($event['title']); ?></p>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -172,7 +172,7 @@ if (!$event) {
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="attendeesModalLabel">Attendees for <?php echo htmlspecialchars($event['name']); ?></h5>
+            <h5 class="modal-title" id="attendeesModalLabel">Attendees for <?php echo htmlspecialchars($event['title']); ?></h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
@@ -209,7 +209,7 @@ if (!$event) {
             var payload = {
                 type: 'attendance',
                 event_id: <?php echo (int)$event['id']; ?>,
-                event_name: <?php echo json_encode($event['name']); ?>,
+                event_name: <?php echo json_encode($event['title']); ?>,
                 ts: Date.now()
             };
             var text = JSON.stringify(payload);
