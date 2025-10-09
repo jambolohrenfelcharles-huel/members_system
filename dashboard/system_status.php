@@ -193,10 +193,20 @@ $system_size_human = su_format_bytes($system_size_bytes);
                                         <span class="text-muted">Database Size</span>
                                         <span class="fw-bold">
                                             <?php
-                                            $query = "SELECT Round(Sum(data_length + index_length) / 1024 / 1024, 2) as size FROM information_schema.tables WHERE table_schema = DATABASE() GROUP BY table_schema";
-                                            $result = $db->query($query);
-                                            $dbSize = $result->fetch(PDO::FETCH_ASSOC)['size'] ?? 0;
-                                            echo number_format($dbSize, 2) . ' MB';
+                                            $isPostgreSQL = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql';
+                                            if ($isPostgreSQL) {
+                                                // PostgreSQL query for database size
+                                                $query = "SELECT pg_size_pretty(pg_database_size(current_database())) as size";
+                                                $result = $db->query($query);
+                                                $dbSizeResult = $result->fetch(PDO::FETCH_ASSOC);
+                                                echo htmlspecialchars($dbSizeResult['size'] ?? 'Unknown');
+                                            } else {
+                                                // MySQL query for database size
+                                                $query = "SELECT Round(Sum(data_length + index_length) / 1024 / 1024, 2) as size FROM information_schema.tables WHERE table_schema = DATABASE() GROUP BY table_schema";
+                                                $result = $db->query($query);
+                                                $dbSize = $result->fetch(PDO::FETCH_ASSOC)['size'] ?? 0;
+                                                echo number_format($dbSize, 2) . ' MB';
+                                            }
                                             ?>
                                         </span>
                                     </div>
