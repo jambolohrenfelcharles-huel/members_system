@@ -1,7 +1,6 @@
 <?php
 session_start();
 require_once '../../config/database.php';
-require_once '../../config/notification_helper.php';
 
 if (!isset($_SESSION['user_id'])) {
     header('Location: ../../auth/login.php');
@@ -53,8 +52,12 @@ if ($_POST) {
         $result = $stmt->execute([$name, $place, $status, $event_date, $description, $region, $organizing_club]);
         
         if ($result) {
-            // Send email notification to all members
-            $notificationHelper = new NotificationHelper($db);
+            // Get the event ID
+            $eventId = $db->lastInsertId();
+            
+            // Queue email notification for async processing
+            require_once '../../config/async_notification_helper.php';
+            $asyncNotificationHelper = new AsyncNotificationHelper($db);
             
             $eventDate = date('F j, Y \a\t g:i A', strtotime($event_date));
             $subject = "New Event: " . $name;
@@ -77,13 +80,24 @@ if ($_POST) {
                 <p>Best regards,<br>SmartUnion</p>
             ";
             
-            $notificationResult = $notificationHelper->sendToAllMembers($subject, $message, 'event');
+            $notificationResult = $asyncNotificationHelper->queueEventNotification($eventId, $subject, $message);
             
             // Log notification result
             if ($notificationResult['success']) {
-                error_log("Event notification sent: " . $notificationResult['sent'] . " emails sent, " . $notificationResult['failed'] . " failed");
+                error_log("Event notification queued: Queue ID " . $notificationResult['queue_id'] . ", " . $notificationResult['total_members'] . " members");
             } else {
-                error_log("Event notification failed: " . $notificationResult['error']);
+                error_log("Event notification queue failed: " . $notificationResult['error']);
+            }
+            
+            // Return JSON response for AJAX
+            if (isset($_POST['ajax'])) {
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Event added successfully!',
+                    'redirect' => 'index.php?added=1'
+                ]);
+                exit();
             }
             
             header('Location: index.php?added=1');
@@ -91,6 +105,16 @@ if ($_POST) {
         } else {
             $errors[] = "Failed to add event";
         }
+    }
+    
+    // Return JSON response for AJAX errors
+    if (isset($_POST['ajax']) && !empty($errors)) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'errors' => $errors
+        ]);
+        exit();
     }
 }
 ?>
@@ -136,7 +160,7 @@ if ($_POST) {
                         <h5 class="mb-0"><i class="fas fa-calendar me-2"></i>Event Information</h5>
                     </div>
                     <div class="card-body">
-                        <form method="POST">
+                        <form method="POST" id="eventForm">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Event Name *</label>
                                 <input type="text" class="form-control" id="name" name="name" value="<?php echo isset($_POST['name']) ? htmlspecialchars($_POST['name']) : ''; ?>" required>
@@ -226,7 +250,7 @@ if ($_POST) {
 
                             <div class="d-flex justify-content-end">
                                 <a href="index.php" class="btn btn-secondary me-2">Cancel</a>
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">
                                     <i class="fas fa-save me-1"></i>Add Event
                                 </button>
                             </div>
@@ -238,5 +262,69 @@ if ($_POST) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    document.getElementById('eventForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.innerHTML;
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Adding Event...';
+        
+        // Create FormData
+        const formData = new FormData(this);
+        formData.append('ajax', '1');
+        
+        // Submit via AJAX
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                submitBtn.innerHTML = '<i class="fas fa-check me-1"></i>Event Added!';
+                submitBtn.classList.remove('btn-primary');
+                submitBtn.classList.add('btn-success');
+                
+                // Redirect after short delay
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 1000);
+            } else {
+                // Show errors
+                let errorHtml = '<div class="alert alert-danger" role="alert"><h6><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</h6><ul class="mb-0">';
+                data.errors.forEach(error => {
+                    errorHtml += '<li>' + error + '</li>';
+                });
+                errorHtml += '</ul></div>';
+                
+                // Insert error message at top of form
+                const cardBody = document.querySelector('.card-body');
+                const existingAlert = cardBody.querySelector('.alert-danger');
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
+                cardBody.insertAdjacentHTML('afterbegin', errorHtml);
+                
+                // Reset button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+            
+            // Reset button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+    });
+    </script>
 </body>
 </html>

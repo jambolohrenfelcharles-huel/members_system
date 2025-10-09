@@ -88,6 +88,55 @@ class AsyncNotificationHelper {
     }
     
     /**
+     * Queue an event notification for asynchronous processing.
+     */
+    public function queueEventNotification($eventId, $subject, $message) {
+        try {
+            // Insert into email_queue
+            $stmt = $this->db->prepare("
+                INSERT INTO email_queue (type, subject, message, status)
+                VALUES ('event', ?, ?, 'pending')
+            ");
+            $stmt->execute([$subject, $message]);
+            $queueId = $this->db->lastInsertId();
+
+            // Get all active members with email addresses
+            $stmt = $this->db->prepare("
+                SELECT id, name as full_name, email
+                FROM {$this->members_table}
+                WHERE status = 'active'
+                AND email IS NOT NULL
+                AND email != ''
+            ");
+            $stmt->execute();
+            $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Insert into email_queue_items
+            $insertItemStmt = $this->db->prepare("
+                INSERT INTO email_queue_items (queue_id, member_id, member_name, member_email, status)
+                VALUES (?, ?, ?, ?, 'pending')
+            ");
+
+            foreach ($members as $member) {
+                $insertItemStmt->execute([$queueId, $member['id'], $member['full_name'], $member['email']]);
+            }
+
+            return [
+                'success' => true,
+                'queue_id' => $queueId,
+                'total_members' => count($members)
+            ];
+
+        } catch (Exception $e) {
+            error_log("AsyncNotificationHelper Event Queue Error: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Create announcement message template
      */
     private function createAnnouncementMessage($title, $content) {
