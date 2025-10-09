@@ -4,7 +4,7 @@
 require_once 'email_config.php';
 
 // Dynamic table name for PostgreSQL compatibility
-$members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : '$members_table';
+$members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
 require_once 'smtp_email.php';
 
 class NotificationHelper {
