@@ -18,11 +18,12 @@ $stmt = $db->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// If member, get status and renewal from membership_monitoring
+// If member, get status and renewal from members table
 $member_status = null;
 $member_renewal = null;
 if (isset($user['role']) && $user['role'] === 'member') {
-    $stmt = $db->prepare("SELECT status, renewal_date FROM membership_monitoring WHERE user_id = ? LIMIT 1");
+    $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
+    $stmt = $db->prepare("SELECT status, renewal_date FROM $members_table WHERE user_id = ? LIMIT 1");
     $stmt->execute([$user['id']]);
     $member = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($member) {

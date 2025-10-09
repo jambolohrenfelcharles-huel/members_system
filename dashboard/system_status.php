@@ -41,7 +41,8 @@ $stats = [];
 $stmt = $db->query("SELECT COUNT(*) as total FROM users");
 $stats['users'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
-$stmt = $db->query("SELECT COUNT(*) as total FROM membership_monitoring");
+$members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
+$stmt = $db->query("SELECT COUNT(*) as total FROM $members_table");
 $stats['members'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
 $stmt = $db->query("SELECT COUNT(*) as total FROM events");

@@ -72,7 +72,7 @@ if ($_POST) {
         // Check if profile_photo column exists in DB
         $profilePhotoColumnExists = false;
         try {
-            $colCheck = $db->query("SHOW COLUMNS FROM members LIKE 'profile_photo'");
+            $colCheck = $db->query("information_schema.columns WHERE table_name = members LIKE 'profile_photo'");
             $profilePhotoColumnExists = $colCheck->fetch(PDO::FETCH_ASSOC) !== false;
         } catch (Exception $e) {}
         if ($profilePhotoColumnExists) {
