@@ -203,8 +203,9 @@ if (!$member) {
                                 $imageExists = false;
                                 
                                 if (!empty($member['image_path'])) {
-                                    $imagePath = '../../uploads/members/' . htmlspecialchars($member['image_path']);
-                                    $fullPath = realpath(__DIR__ . '/../../uploads/members/' . $member['image_path']);
+                                    // The image_path already includes 'members/' prefix, so we just need 'uploads/'
+                                    $imagePath = '../../uploads/' . htmlspecialchars($member['image_path']);
+                                    $fullPath = realpath(__DIR__ . '/../../uploads/' . $member['image_path']);
                                     $imageExists = $fullPath && file_exists($fullPath);
                                 }
                                 ?>
