@@ -203,33 +203,58 @@ if (!$member) {
                                 $imageExists = false;
                                 
                                 if (!empty($member['image_path'])) {
-                                    // The image_path already includes 'members/' prefix, so we just need 'uploads/'
-                                    $imagePath = '../../uploads/' . htmlspecialchars($member['image_path']);
-                                    $fullPath = realpath(__DIR__ . '/../../uploads/' . $member['image_path']);
-                                    $imageExists = $fullPath && file_exists($fullPath);
+                                    // Handle different path formats for Render compatibility
+                                    $dbImagePath = $member['image_path'];
+                                    
+                                    // Try multiple path constructions for Render compatibility
+                                    $possiblePaths = [
+                                        // If image_path is just filename (e.g., "member_1_1759947566_3917.png")
+                                        '../../uploads/members/' . $dbImagePath,
+                                        // If image_path includes members/ prefix (e.g., "members/member_1_1759947566_3917.png")
+                                        '../../uploads/' . $dbImagePath,
+                                        // Direct path from root
+                                        '/uploads/members/' . basename($dbImagePath),
+                                        // Alternative path
+                                        '../uploads/members/' . basename($dbImagePath)
+                                    ];
+                                    
+                                    // Check which path exists
+                                    foreach ($possiblePaths as $testPath) {
+                                        $fullPath = realpath(__DIR__ . '/' . str_replace('../', '', $testPath));
+                                        if ($fullPath && file_exists($fullPath)) {
+                                            $imagePath = $testPath;
+                                            $imageExists = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // If no file found, use the most likely path for display
+                                    if (!$imageExists) {
+                                        $imagePath = '../../uploads/members/' . basename($dbImagePath);
+                                    }
                                 }
                                 ?>
                                 
-                                <?php if (!empty($member['image_path']) && $imageExists): ?>
+                                <?php if (!empty($member['image_path'])): ?>
+                                    <!-- Always try to display the image, let browser handle 404s -->
                                     <img src="<?php echo $imagePath; ?>" 
                                          class="img-fluid rounded shadow-sm" 
                                          style="max-height: 320px; object-fit: cover; border: 3px solid #e9ecef;" 
                                          alt="Member Photo"
                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    
+                                    <!-- Fallback when image fails to load -->
                                     <div class="bg-light p-4 rounded" style="display: none;">
                                         <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
                                         <p class="mt-2 text-muted">Image not found</p>
+                                        <small class="text-muted">Path: <?php echo htmlspecialchars($imagePath); ?></small>
+                                        <br><small class="text-muted">DB Path: <?php echo htmlspecialchars($member['image_path']); ?></small>
                                     </div>
+                                    
                                     <div class="mt-2">
                                         <small class="text-muted">
                                             <i class="fas fa-file-image me-1"></i><?php echo htmlspecialchars($member['image_path']); ?>
                                         </small>
-                                    </div>
-                                <?php elseif (!empty($member['image_path']) && !$imageExists): ?>
-                                    <div class="bg-warning p-4 rounded">
-                                        <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
-                                        <p class="mt-2 text-muted">Image file not found</p>
-                                        <small class="text-muted"><?php echo htmlspecialchars($member['image_path']); ?></small>
                                     </div>
                                 <?php else: ?>
                                     <div class="bg-light p-4 rounded">
