@@ -13,19 +13,29 @@ $db = $database->getConnection();
 
 // Handle AJAX attendance marking
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
-    $event_id = intval($_POST['event_id']);
-    $user_id = $_SESSION['user_id'];
-    $date = date('Y-m-d H:i:s');
+    // Set proper headers for AJAX response
+    header('Content-Type: application/json');
+    
+    try {
+        $event_id = intval($_POST['event_id']);
+        $user_id = $_SESSION['user_id'];
+        $date = date('Y-m-d H:i:s');
 
-    // Get user email from users table
-    $stmt = $db->prepare('SELECT email FROM users WHERE id = ?');
-    $stmt->execute([$user_id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$user) {
-        echo json_encode(['status' => 'error', 'message' => 'User not found']);
-        exit();
-    }
-    $email = $user['email'];
+        // Validate event_id
+        if ($event_id <= 0) {
+            echo json_encode(['status' => 'error', 'message' => 'Invalid event ID']);
+            exit();
+        }
+
+        // Get user email from users table
+        $stmt = $db->prepare('SELECT email FROM users WHERE id = ?');
+        $stmt->execute([$user_id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            echo json_encode(['status' => 'error', 'message' => 'User not found']);
+            exit();
+        }
+        $email = $user['email'];
 
     // Get member info from members table using email
     $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
@@ -64,12 +74,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
         exit();
     }
 
-    // Insert attendance with full_name and club_position
-    $stmt = $db->prepare('INSERT INTO attendance (member_id, full_name, club_position, event_id, date) VALUES (?, ?, ?, ?, ?)');
-    if ($stmt->execute([$member_id, $full_name, $club_position, $event_id, $date])) {
-        echo json_encode(['status' => 'success']);
-    } else {
-        echo json_encode(['status' => 'error']);
+        // Insert attendance with full_name and club_position
+        $stmt = $db->prepare('INSERT INTO attendance (member_id, full_name, club_position, event_id, date) VALUES (?, ?, ?, ?, ?)');
+        if ($stmt->execute([$member_id, $full_name, $club_position, $event_id, $date])) {
+            echo json_encode(['status' => 'success', 'message' => 'Attendance marked successfully']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to insert attendance record']);
+        }
+        
+    } catch (Exception $e) {
+        // Log the error for debugging
+        error_log("QR Scan Error: " . $e->getMessage());
+        echo json_encode(['status' => 'error', 'message' => 'Server error: ' . $e->getMessage()]);
     }
     exit();
 }
@@ -169,7 +185,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 <div id="qr-reader" style="width: 100%; min-height: 260px;"></div>
             </div>
             <div id="qr-result" class="mt-3"></div>
-            <a href="../index.php" class="btn glow-btn w-100 mt-4"><i class="fas fa-arrow-left me-1"></i>Return</a>
+            
+            <!-- Debug section (hidden by default) -->
+            <div id="debug-section" class="mt-3" style="display: none;">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-bug me-2"></i>Debug Information</h6>
+                    <div id="debug-info"></div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2 mt-4">
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="toggleDebug()">
+                    <i class="fas fa-bug me-1"></i>Debug
+                </button>
+                <button type="button" class="btn btn-outline-warning btn-sm" onclick="testQRScan()">
+                    <i class="fas fa-test-tube me-1"></i>Test
+                </button>
+                <a href="../index.php" class="btn glow-btn flex-grow-1">
+                    <i class="fas fa-arrow-left me-1"></i>Return
+                </a>
+            </div>
         </div>
     </div>
     <script>
@@ -216,6 +251,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
             // Don't show error to user unless it's a critical issue
         }
 
+        // Debug functions
+        function toggleDebug() {
+            const debugSection = document.getElementById('debug-section');
+            const debugInfo = document.getElementById('debug-info');
+            
+            if (debugSection.style.display === 'none') {
+                // Show debug info
+                fetch('qr_debug.php')
+                    .then(response => response.json())
+                    .then(data => {
+                        debugInfo.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                        debugSection.style.display = 'block';
+                    })
+                    .catch(error => {
+                        debugInfo.innerHTML = '<p class="text-danger">Debug failed: ' + error.message + '</p>';
+                        debugSection.style.display = 'block';
+                    });
+            } else {
+                debugSection.style.display = 'none';
+            }
+        }
+        
+        // Test QR scan function
+        function testQRScan() {
+            const testEventId = 1; // Test with event ID 1
+            markAttendance(testEventId);
+        }
+
         // Attendance AJAX with Render optimizations
         function markAttendance(event_id) {
             // Show loading state
@@ -230,21 +293,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 },
                 body: 'event_id=' + encodeURIComponent(event_id)
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 let resultDiv = document.getElementById('qr-result');
                 if (data.status === 'success') {
-                    resultDiv.innerHTML = '<div class="alert alert-success">Attendance marked successfully!</div>';
+                    resultDiv.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>Attendance marked successfully!</div>';
                 } else if (data.status === 'already_marked') {
-                    resultDiv.innerHTML = '<div class="alert alert-info">Attendance already marked for this event.</div>';
+                    resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Attendance already marked for this event.</div>';
                 } else {
-                    resultDiv.innerHTML = '<div class="alert alert-danger">Failed to mark attendance. Try again.</div>';
+                    let errorMsg = data.message || 'Failed to mark attendance. Try again.';
+                    resultDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>${errorMsg}</div>`;
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('QR Scan Error:', error);
                 let resultDiv = document.getElementById('qr-result');
-                resultDiv.innerHTML = '<div class="alert alert-danger">Network error. Please check your connection and try again.</div>';
+                resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-wifi me-2"></i>Network error. Please check your connection and try again.</div>';
             });
         }
     </script>
