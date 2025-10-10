@@ -150,9 +150,9 @@ if (!$event) {
                                 <div class="card mt-2">
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i>Attendance QR Code</h6>
-                                        <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download QR</button>
-                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr.png" target="_blank" class="btn btn-sm btn-success ms-2">
-                                            <i class="fas fa-download me-1"></i>Direct Download
+                                        <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download Generated QR</button>
+                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_generated_qr.png" target="_blank" class="btn btn-sm btn-success ms-2">
+                                            <i class="fas fa-download me-1"></i>Download Generated QR
                                         </a>
                                     </div>
                                     <div class="card-body text-center">
@@ -404,10 +404,10 @@ if (!$event) {
         
         function generateQrWithPrimary(text, container) {
             try {
-                var qr = new QRCode(container, {
-                    text: text,
-                    width: 192,
-                    height: 192,
+            var qr = new QRCode(container, {
+                text: text,
+                width: 192,
+                height: 192,
                     correctLevel: QRCode.CorrectLevel.M,
                     colorDark: "#000000",
                     colorLight: "#ffffff"
@@ -492,15 +492,15 @@ if (!$event) {
         
         function directDownload() {
             var eventId = <?php echo (int)$event['id']; ?>;
-            var filename = 'event_' + eventId + '_qr.png';
+            var filename = 'event_' + eventId + '_generated_qr.png';
             
-            console.log('Starting Render-optimized QR code download for event ' + eventId);
+            console.log('Starting download of generated QR code for event ' + eventId);
             
-            // Method 1: Try Render-optimized direct download (most reliable for Render)
+            // Method 1: Download the generated QR code directly (most reliable)
             try {
                 var downloadUrl = 'download_qr.php?event_id=' + eventId + '&_t=' + Date.now();
                 
-                // Create a more robust download link for Render
+                // Create download link for generated QR code
                 var a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = filename;
@@ -518,14 +518,14 @@ if (!$event) {
                     }
                 }, 1000);
                 
-                console.log('Render-optimized QR code download initiated');
+                console.log('Generated QR code download initiated');
                 showDownloadSuccess(filename);
                 return;
             } catch (error) {
-                console.error('Render direct download failed:', error);
+                console.error('Generated QR code download failed:', error);
             }
             
-            // Method 2: Try fetch API with blob handling (Render-friendly)
+            // Method 2: Try fetch API to download generated QR code
             try {
                 var downloadUrl = 'download_qr.php?event_id=' + eventId;
                 
@@ -540,6 +540,15 @@ if (!$event) {
                     if (!response.ok) {
                         throw new Error('Network response was not ok: ' + response.status);
                     }
+                    
+                    // Check if response contains generated QR code headers
+                    var qrGenerated = response.headers.get('X-QR-Generated');
+                    var qrSize = response.headers.get('X-QR-Size');
+                    
+                    if (qrGenerated === 'true') {
+                        console.log('Generated QR code detected, size: ' + qrSize + ' bytes');
+                    }
+                    
                     return response.blob();
                 })
                 .then(blob => {
@@ -549,6 +558,7 @@ if (!$event) {
                         a.href = url;
                         a.download = filename;
                         a.style.display = 'none';
+                        a.target = '_blank';
                         document.body.appendChild(a);
                         a.click();
                         
@@ -559,15 +569,15 @@ if (!$event) {
                             URL.revokeObjectURL(url);
                         }, 1000);
                         
-                        console.log('Fetch API QR download completed');
+                        console.log('Generated QR code download via fetch completed');
                         showDownloadSuccess(filename);
                         return;
                     } else {
-                        throw new Error('Invalid QR code blob received');
+                        throw new Error('Invalid generated QR code blob received');
                     }
                 })
                 .catch(error => {
-                    console.error('Fetch API download failed:', error);
+                    console.error('Fetch API generated QR download failed:', error);
                     // Fall back to server QR image
                     downloadServerQrImage();
                 });

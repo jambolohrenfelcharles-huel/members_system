@@ -113,9 +113,9 @@ try {
         throw new Exception('Failed to generate QR code from all available APIs');
     }
     
-    // Set headers for Render-optimized download
+    // Set headers for Render-optimized download of generated QR code
     header('Content-Type: image/png');
-    header('Content-Disposition: attachment; filename="event_' . $eventId . '_qr.png"');
+    header('Content-Disposition: attachment; filename="event_' . $eventId . '_generated_qr.png"');
     header('Content-Length: ' . strlen($qrImage));
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');
@@ -123,12 +123,14 @@ try {
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('X-Render-QR-Download: success');
+    header('X-QR-Generated: true');
+    header('X-QR-Size: ' . strlen($qrImage) . ' bytes');
     
-    // Output the QR code image
+    // Output the generated QR code image
     echo $qrImage;
     
-    // Log successful download
-    error_log("QR Code download successful for event $eventId, size: " . strlen($qrImage) . " bytes");
+    // Log successful download of generated QR code
+    error_log("Generated QR Code download successful for event $eventId, size: " . strlen($qrImage) . " bytes, payload: " . $qrText);
     
 } catch (Exception $e) {
     // Clear any previous headers
