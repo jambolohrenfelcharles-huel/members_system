@@ -28,15 +28,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
     $email = $user['email'];
 
     // Get member info from members table using email
-    $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'members';
-    $stmt = $db->prepare("SELECT id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
-    $stmt->execute([$email]);
-    $member = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$member) {
-        echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
-        exit();
+    $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
+    
+    // Handle different table structures
+    if ($_ENV['DB_TYPE'] === 'postgresql') {
+        // PostgreSQL uses 'members' table with 'member_id' column
+        $stmt = $db->prepare("SELECT id, member_id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $member = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$member) {
+            echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
+            exit();
+        }
+        $member_id = $member['member_id']; // Use the generated member_id (e.g., 'M20241234')
+    } else {
+        // MySQL uses 'membership_monitoring' table without 'member_id' column
+        $stmt = $db->prepare("SELECT id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $member = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$member) {
+            echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
+            exit();
+        }
+        $member_id = 'M' . date('Y') . str_pad($member['id'], 4, '0', STR_PAD_LEFT); // Generate member_id from id
     }
-    $member_id = $member['id'];
+    
     $full_name = $member['name'];
     $club_position = $member['club_position'] ?? '';
 
@@ -178,16 +194,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 resultDiv.innerHTML = '<div class="alert alert-danger">Invalid QR code for event attendance.</div>';
             }
         }
+        // Render-optimized QR scanner configuration
         let html5QrcodeScanner = new Html5QrcodeScanner(
-            "qr-reader", { fps: 10, qrbox: 250 }
+            "qr-reader", { 
+                fps: 10, 
+                qrbox: 250,
+                aspectRatio: 1.0,
+                disableFlip: false,
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true
+                }
+            }
         );
-        html5QrcodeScanner.render(onScanSuccess);
+        
+        // Add Render-specific error handling
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        
+        function onScanFailure(error) {
+            // Handle scan failures gracefully on Render
+            console.log('QR scan failed:', error);
+            // Don't show error to user unless it's a critical issue
+        }
 
-        // Attendance AJAX
+        // Attendance AJAX with Render optimizations
         function markAttendance(event_id) {
+            // Show loading state
+            let resultDiv = document.getElementById('qr-result');
+            resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Processing attendance...</div>';
+            
             fetch('qr_scan.php', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                headers: { 
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 body: 'event_id=' + encodeURIComponent(event_id)
             })
             .then(response => response.json())
@@ -200,6 +240,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 } else {
                     resultDiv.innerHTML = '<div class="alert alert-danger">Failed to mark attendance. Try again.</div>';
                 }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                let resultDiv = document.getElementById('qr-result');
+                resultDiv.innerHTML = '<div class="alert alert-danger">Network error. Please check your connection and try again.</div>';
             });
         }
     </script>
