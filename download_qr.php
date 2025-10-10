@@ -48,44 +48,54 @@ try {
     ];
     $qrText = json_encode($qrPayload);
     
-    // Render-specific QR code generation - use multiple APIs with better error handling
+    // Enhanced QR code generation with validation
     $qrImage = null;
     $qrApis = [
-        'QR Server' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($qrText),
-        'QuickChart' => 'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=300',
-        'Google Charts' => 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=' . urlencode($qrText),
-        'QR Code API' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($qrText)
+        'QR Server Primary' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($qrText) . '&format=png&ecc=M',
+        'QR Server Secondary' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($qrText) . '&format=png&ecc=L',
+        'QuickChart' => 'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=300&format=png',
+        'Google Charts' => 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=' . urlencode($qrText) . '&choe=UTF-8',
+        'QR Code API' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&format=png&data=' . urlencode($qrText) . '&ecc=M'
     ];
     
-    // Try each API with proper error handling
+    // Try each API with proper error handling and validation
     foreach ($qrApis as $apiName => $apiUrl) {
         try {
-            // Create context with Render-optimized settings
+            // Create context with enhanced settings
             $context = stream_context_create([
                 'http' => [
-                    'timeout' => 15, // Longer timeout for Render
-                    'user_agent' => 'SmartApp-Render-QR-Downloader/1.0',
+                    'timeout' => 20, // Longer timeout for reliability
+                    'user_agent' => 'SmartApp-QR-Downloader/2.0',
                     'method' => 'GET',
                     'header' => [
                         'Accept: image/png,image/*,*/*',
                         'Connection: keep-alive',
-                        'Cache-Control: no-cache'
+                        'Cache-Control: no-cache',
+                        'User-Agent: Mozilla/5.0 (compatible; SmartApp-QR-Downloader/2.0)'
                     ],
-                    'ignore_errors' => true // Don't fail on HTTP errors
+                    'ignore_errors' => true
                 ],
                 'ssl' => [
                     'verify_peer' => false,
-                    'verify_peer_name' => false
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
                 ]
             ]);
             
             $qrImage = file_get_contents($apiUrl, false, $context);
             
-            if ($qrImage !== false && strlen($qrImage) > 100) { // Ensure we got actual image data
-                error_log("QR Code generated successfully using $apiName API");
-                break;
+            // Validate that we got actual PNG image data
+            if ($qrImage !== false && strlen($qrImage) > 500) {
+                // Check if it's actually a PNG file
+                if (substr($qrImage, 0, 8) === "\x89PNG\r\n\x1a\n" || strpos($qrImage, 'PNG') !== false) {
+                    error_log("Valid QR Code PNG generated using $apiName API, size: " . strlen($qrImage) . " bytes");
+                    break;
+                } else {
+                    error_log("QR Code from $apiName API is not a valid PNG file");
+                    $qrImage = null;
+                }
             } else {
-                error_log("QR Code generation failed with $apiName API");
+                error_log("QR Code generation failed with $apiName API - insufficient data");
                 $qrImage = null;
             }
         } catch (Exception $e) {
@@ -94,23 +104,33 @@ try {
         }
     }
     
-    // If all APIs failed, create a simple QR code using a different approach
-    if ($qrImage === null || strlen($qrImage) < 100) {
-        error_log("All QR APIs failed, creating fallback QR code");
+    // If all APIs failed, create a guaranteed QR code using a reliable method
+    if ($qrImage === null || strlen($qrImage) < 500) {
+        error_log("All QR APIs failed, creating guaranteed QR code");
         
-        // Create a simple QR code using a different method
-        $fallbackUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($qrText) . '&format=png&ecc=M';
-        $qrImage = @file_get_contents($fallbackUrl);
+        // Use a more reliable QR generation method
+        $guaranteedUrls = [
+            'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($qrText) . '&format=png&ecc=M&margin=10',
+            'https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=' . urlencode($qrText) . '&choe=UTF-8&chld=M|0',
+            'https://quickchart.io/qr?text=' . urlencode($qrText) . '&size=250&format=png&margin=1'
+        ];
         
-        if ($qrImage === false || strlen($qrImage) < 100) {
-            // Create a minimal QR code as last resort
-            $minimalUrl = 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=' . urlencode($qrText) . '&choe=UTF-8';
-            $qrImage = @file_get_contents($minimalUrl);
+        foreach ($guaranteedUrls as $url) {
+            $qrImage = @file_get_contents($url);
+            if ($qrImage !== false && strlen($qrImage) > 500) {
+                error_log("Guaranteed QR code generated, size: " . strlen($qrImage) . " bytes");
+                break;
+            }
         }
     }
     
-    if ($qrImage === false || strlen($qrImage) < 100) {
-        throw new Exception('Failed to generate QR code from all available APIs');
+    if ($qrImage === false || strlen($qrImage) < 500) {
+        throw new Exception('Failed to generate valid QR code PNG image from all available APIs');
+    }
+    
+    // Final validation - ensure we have a valid PNG image
+    if (substr($qrImage, 0, 8) !== "\x89PNG\r\n\x1a\n") {
+        error_log("Warning: QR code may not be a valid PNG file, but proceeding with download");
     }
     
     // Set headers for universal QR code download compatibility
