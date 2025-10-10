@@ -455,6 +455,21 @@ try {
         echo "<p style='color: red;'>❌ Admin member migration failed: " . $e->getMessage() . "</p>";
     }
     
+    // Run PostgreSQL member_id type fix
+    echo "<h3>🔧 Running PostgreSQL Member ID Fix</h3>";
+    
+    try {
+        // Include the PostgreSQL member_id fix function
+        require_once 'db/migration_fix_postgresql_member_id.php';
+        
+        // Execute the fix
+        fixPostgreSQLMemberIdError($db, $isPostgreSQL ? 'postgresql' : 'mysql');
+        
+        echo "<p style='color: green;'>✅ PostgreSQL member_id type fix completed</p>";
+    } catch (Exception $e) {
+        echo "<p style='color: red;'>❌ PostgreSQL member_id fix failed: " . $e->getMessage() . "</p>";
+    }
+    
     echo "<h3>🎉 Deployment Complete!</h3>";
     echo "<div style='background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 10px 0;'>";
     echo "<p><strong>Your SmartApp is ready!</strong></p>";

@@ -66,16 +66,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
         $full_name = $member['name'];
         $club_position = $member['club_position'] ?? '';
 
-        // Check if already marked
-        $stmt = $db->prepare('SELECT id FROM attendance WHERE member_id = ? AND event_id = ?');
+        // Check if already marked (PostgreSQL-safe)
+        if ($_ENV['DB_TYPE'] === 'postgresql') {
+            $stmt = $db->prepare('SELECT id FROM attendance WHERE member_id = ?::VARCHAR(50) AND event_id = ?::INTEGER');
+        } else {
+            $stmt = $db->prepare('SELECT id FROM attendance WHERE member_id = ? AND event_id = ?');
+        }
         $stmt->execute([$member_id, $event_id]);
         if ($stmt->fetch()) {
             echo json_encode(['status' => 'already_marked']);
             exit();
         }
 
-        // Insert attendance with full_name and club_position
-        $stmt = $db->prepare('INSERT INTO attendance (member_id, full_name, club_position, event_id, date) VALUES (?, ?, ?, ?, ?)');
+        // Insert attendance with full_name and club_position (PostgreSQL-safe)
+        if ($_ENV['DB_TYPE'] === 'postgresql') {
+            $stmt = $db->prepare('INSERT INTO attendance (member_id, full_name, club_position, event_id, date) VALUES (?::VARCHAR(50), ?::VARCHAR(100), ?::VARCHAR(50), ?::INTEGER, ?::TIMESTAMP)');
+        } else {
+            $stmt = $db->prepare('INSERT INTO attendance (member_id, full_name, club_position, event_id, date) VALUES (?, ?, ?, ?, ?)');
+        }
         if ($stmt->execute([$member_id, $full_name, $club_position, $event_id, $date])) {
             echo json_encode(['status' => 'success', 'message' => 'Attendance marked successfully']);
         } else {
