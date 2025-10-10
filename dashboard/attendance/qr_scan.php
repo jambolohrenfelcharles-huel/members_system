@@ -37,42 +37,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
         }
         $email = $user['email'];
 
-    // Get member info from members table using email
-    $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
-    
-    // Handle different table structures
-    if ($_ENV['DB_TYPE'] === 'postgresql') {
-        // PostgreSQL uses 'members' table with 'member_id' column
-        $stmt = $db->prepare("SELECT id, member_id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
-        $stmt->execute([$email]);
-        $member = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$member) {
-            echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
-            exit();
+        // Get member info from members table using email
+        $members_table = ($_ENV['DB_TYPE'] ?? 'mysql') === 'postgresql' ? 'members' : 'membership_monitoring';
+        
+        // Handle different table structures
+        if ($_ENV['DB_TYPE'] === 'postgresql') {
+            // PostgreSQL uses 'members' table with 'member_id' column
+            $stmt = $db->prepare("SELECT id, member_id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
+            $stmt->execute([$email]);
+            $member = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$member) {
+                echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
+                exit();
+            }
+            $member_id = $member['member_id']; // Use the generated member_id (e.g., 'M20241234')
+        } else {
+            // MySQL uses 'membership_monitoring' table without 'member_id' column
+            $stmt = $db->prepare("SELECT id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
+            $stmt->execute([$email]);
+            $member = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$member) {
+                echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
+                exit();
+            }
+            $member_id = 'M' . date('Y') . str_pad($member['id'], 4, '0', STR_PAD_LEFT); // Generate member_id from id
         }
-        $member_id = $member['member_id']; // Use the generated member_id (e.g., 'M20241234')
-    } else {
-        // MySQL uses 'membership_monitoring' table without 'member_id' column
-        $stmt = $db->prepare("SELECT id, name, club_position FROM $members_table WHERE email = ? LIMIT 1");
-        $stmt->execute([$email]);
-        $member = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$member) {
-            echo json_encode(['status' => 'error', 'message' => 'Member record not found for this email']);
-            exit();
-        }
-        $member_id = 'M' . date('Y') . str_pad($member['id'], 4, '0', STR_PAD_LEFT); // Generate member_id from id
-    }
-    
-    $full_name = $member['name'];
-    $club_position = $member['club_position'] ?? '';
+        
+        $full_name = $member['name'];
+        $club_position = $member['club_position'] ?? '';
 
-    // Check if already marked
-    $stmt = $db->prepare('SELECT id FROM attendance WHERE member_id = ? AND event_id = ?');
-    $stmt->execute([$member_id, $event_id]);
-    if ($stmt->fetch()) {
-        echo json_encode(['status' => 'already_marked']);
-        exit();
-    }
+        // Check if already marked
+        $stmt = $db->prepare('SELECT id FROM attendance WHERE member_id = ? AND event_id = ?');
+        $stmt->execute([$member_id, $event_id]);
+        if ($stmt->fetch()) {
+            echo json_encode(['status' => 'already_marked']);
+            exit();
+        }
 
         // Insert attendance with full_name and club_position
         $stmt = $db->prepare('INSERT INTO attendance (member_id, full_name, club_position, event_id, date) VALUES (?, ?, ?, ?, ?)');
@@ -250,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
             console.log('QR scan failed:', error);
             // Don't show error to user unless it's a critical issue
         }
-
+        
         // Debug functions
         function toggleDebug() {
             const debugSection = document.getElementById('debug-section');
