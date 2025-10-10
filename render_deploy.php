@@ -410,6 +410,21 @@ try {
         echo "<p style='color: red;'>❌ Users query failed: " . $e->getMessage() . "</p>";
     }
     
+    // Run news_feed table migration
+    echo "<h3>🔧 Running News Feed Migration</h3>";
+    
+    try {
+        // Include the news_feed migration function
+        require_once 'db/migration_fix_news_feed_table.php';
+        
+        // Execute the migration
+        fixNewsFeedTable($db, $isPostgreSQL ? 'postgresql' : 'mysql');
+        
+        echo "<p style='color: green;'>✅ News feed table migration completed</p>";
+    } catch (Exception $e) {
+        echo "<p style='color: red;'>❌ News feed migration failed: " . $e->getMessage() . "</p>";
+    }
+    
     echo "<h3>🎉 Deployment Complete!</h3>";
     echo "<div style='background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 10px 0;'>";
     echo "<p><strong>Your SmartApp is ready!</strong></p>";
