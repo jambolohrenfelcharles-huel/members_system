@@ -440,6 +440,21 @@ try {
         echo "<p style='color: red;'>❌ Attendance migration failed: " . $e->getMessage() . "</p>";
     }
     
+    // Run admin member record migration
+    echo "<h3>🔧 Running Admin Member Migration</h3>";
+    
+    try {
+        // Include the admin member migration function
+        require_once 'db/migration_create_admin_member.php';
+        
+        // Execute the migration
+        createAdminMemberRecord($db, $isPostgreSQL ? 'postgresql' : 'mysql');
+        
+        echo "<p style='color: green;'>✅ Admin member record migration completed</p>";
+    } catch (Exception $e) {
+        echo "<p style='color: red;'>❌ Admin member migration failed: " . $e->getMessage() . "</p>";
+    }
+    
     echo "<h3>🎉 Deployment Complete!</h3>";
     echo "<div style='background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 10px 0;'>";
     echo "<p><strong>Your SmartApp is ready!</strong></p>";

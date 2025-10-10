@@ -185,32 +185,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 <div id="qr-reader" style="width: 100%; min-height: 260px;"></div>
             </div>
             <div id="qr-result" class="mt-3"></div>
-            
-            <!-- Debug section (hidden by default) -->
-            <div id="debug-section" class="mt-3" style="display: none;">
-                <div class="alert alert-info">
-                    <h6><i class="fas fa-bug me-2"></i>Debug Information</h6>
-                    <div id="debug-info"></div>
-                </div>
-            </div>
-            
-            <div class="d-flex gap-2 mt-4">
-                <button type="button" class="btn btn-outline-info btn-sm" onclick="toggleDebug()">
-                    <i class="fas fa-bug me-1"></i>Debug
-                </button>
-                <button type="button" class="btn btn-outline-warning btn-sm" onclick="testQRScan()">
-                    <i class="fas fa-test-tube me-1"></i>Test
-                </button>
-                <a href="../index.php" class="btn glow-btn flex-grow-1">
-                    <i class="fas fa-arrow-left me-1"></i>Return
-                </a>
-            </div>
+            <a href="../index.php" class="btn glow-btn w-100 mt-4"><i class="fas fa-arrow-left me-1"></i>Return</a>
         </div>
     </div>
     <script>
 
-        // QR Scan (live only)
+        // QR Scan (live only) - Render optimized
         function onScanSuccess(decodedText, decodedResult) {
+            // Stop scanning after successful detection
+            html5QrcodeScanner.clear();
+            
             let event_id = null;
             try {
                 // Try to parse as JSON (for event QR codes)
@@ -222,11 +206,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 // Fallback: treat as plain event_id
                 event_id = decodedText;
             }
-            if (event_id) {
+            
+            if (event_id && !isNaN(event_id) && event_id > 0) {
                 markAttendance(event_id);
             } else {
                 let resultDiv = document.getElementById('qr-result');
-                resultDiv.innerHTML = '<div class="alert alert-danger">Invalid QR code for event attendance.</div>';
+                resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Invalid QR code. Please scan a valid event QR code.</div>';
+                
+                // Restart scanning after 3 seconds
+                setTimeout(() => {
+                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                }, 3000);
             }
         }
         // Render-optimized QR scanner configuration
@@ -238,7 +228,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                 disableFlip: false,
                 experimentalFeatures: {
                     useBarCodeDetectorIfSupported: true
-                }
+                },
+                rememberLastUsedCamera: true,
+                showTorchButtonIfSupported: true,
+                showZoomSliderIfSupported: true,
+                defaultZoomValueIfSupported: 2,
+                useBarCodeDetectorIfSupported: true
             }
         );
         
@@ -249,34 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
             // Handle scan failures gracefully on Render
             console.log('QR scan failed:', error);
             // Don't show error to user unless it's a critical issue
-        }
-        
-        // Debug functions
-        function toggleDebug() {
-            const debugSection = document.getElementById('debug-section');
-            const debugInfo = document.getElementById('debug-info');
-            
-            if (debugSection.style.display === 'none') {
-                // Show debug info
-                fetch('qr_debug.php')
-                    .then(response => response.json())
-                    .then(data => {
-                        debugInfo.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-                        debugSection.style.display = 'block';
-                    })
-                    .catch(error => {
-                        debugInfo.innerHTML = '<p class="text-danger">Debug failed: ' + error.message + '</p>';
-                        debugSection.style.display = 'block';
-                    });
-            } else {
-                debugSection.style.display = 'none';
-            }
-        }
-        
-        // Test QR scan function
-        function testQRScan() {
-            const testEventId = 1; // Test with event ID 1
-            markAttendance(testEventId);
         }
 
         // Attendance AJAX with Render optimizations
@@ -309,11 +276,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id'])) {
                     let errorMsg = data.message || 'Failed to mark attendance. Try again.';
                     resultDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>${errorMsg}</div>`;
                 }
+                
+                // Restart scanning after 5 seconds
+                setTimeout(() => {
+                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                }, 5000);
             })
             .catch(error => {
                 console.error('QR Scan Error:', error);
                 let resultDiv = document.getElementById('qr-result');
                 resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-wifi me-2"></i>Network error. Please check your connection and try again.</div>';
+                
+                // Restart scanning after 3 seconds on error
+                setTimeout(() => {
+                    html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+                }, 3000);
             });
         }
     </script>
