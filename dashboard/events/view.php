@@ -150,9 +150,9 @@ if (!$event) {
                                 <div class="card mt-2">
                                     <div class="card-header d-flex justify-content-between align-items-center">
                                         <h6 class="mb-0"><i class="fas fa-qrcode me-2"></i>Attendance QR Code</h6>
-                                        <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download Generated QR</button>
-                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_generated_qr.png" target="_blank" class="btn btn-sm btn-success ms-2">
-                                            <i class="fas fa-download me-1"></i>Download Generated QR
+                                        <button id="downloadQrBtn" class="btn btn-sm btn-outline-secondary" onclick="directDownload(); return false;"><i class="fas fa-download me-1"></i>Download QR Code</button>
+                                        <a href="download_qr.php?event_id=<?php echo (int)$event['id']; ?>" download="event_<?php echo (int)$event['id']; ?>_qr_code.png" target="_self" class="btn btn-sm btn-success ms-2">
+                                            <i class="fas fa-download me-1"></i>Download QR Code
                                         </a>
                                     </div>
                                     <div class="card-body text-center">
@@ -492,23 +492,26 @@ if (!$event) {
         
         function directDownload() {
             var eventId = <?php echo (int)$event['id']; ?>;
-            var filename = 'event_' + eventId + '_generated_qr.png';
+            var filename = 'event_' + eventId + '_qr_code.png';
             
-            console.log('Starting download of generated QR code for event ' + eventId);
+            console.log('Starting universal QR code download for event ' + eventId);
             
-            // Method 1: Download the generated QR code directly (most reliable)
+            // Method 1: Universal download approach (works on all browsers and devices)
             try {
                 var downloadUrl = 'download_qr.php?event_id=' + eventId + '&_t=' + Date.now();
                 
-                // Create download link for generated QR code
+                // Create universal download link
                 var a = document.createElement('a');
                 a.href = downloadUrl;
                 a.download = filename;
                 a.style.display = 'none';
-                a.target = '_blank'; // Add target for Render compatibility
+                a.target = '_self'; // Use _self for better compatibility
+                a.rel = 'noopener noreferrer';
                 
                 // Add to DOM, click, and remove
                 document.body.appendChild(a);
+                
+                // Trigger download
                 a.click();
                 
                 // Clean up after a short delay
@@ -516,16 +519,16 @@ if (!$event) {
                     if (document.body.contains(a)) {
                         document.body.removeChild(a);
                     }
-                }, 1000);
+                }, 2000);
                 
-                console.log('Generated QR code download initiated');
+                console.log('Universal QR code download initiated');
                 showDownloadSuccess(filename);
                 return;
             } catch (error) {
-                console.error('Generated QR code download failed:', error);
+                console.error('Universal QR code download failed:', error);
             }
             
-            // Method 2: Try fetch API to download generated QR code
+            // Method 2: Universal fetch API download (modern browsers)
             try {
                 var downloadUrl = 'download_qr.php?event_id=' + eventId;
                 
@@ -541,12 +544,13 @@ if (!$event) {
                         throw new Error('Network response was not ok: ' + response.status);
                     }
                     
-                    // Check if response contains generated QR code headers
-                    var qrGenerated = response.headers.get('X-QR-Generated');
+                    // Check if response contains downloadable QR code headers
+                    var qrDownloadable = response.headers.get('X-QR-Downloadable');
                     var qrSize = response.headers.get('X-QR-Size');
+                    var qrFormat = response.headers.get('X-QR-Format');
                     
-                    if (qrGenerated === 'true') {
-                        console.log('Generated QR code detected, size: ' + qrSize + ' bytes');
+                    if (qrDownloadable === 'true') {
+                        console.log('Downloadable QR code detected, size: ' + qrSize + ' bytes, format: ' + qrFormat);
                     }
                     
                     return response.blob();
@@ -558,7 +562,8 @@ if (!$event) {
                         a.href = url;
                         a.download = filename;
                         a.style.display = 'none';
-                        a.target = '_blank';
+                        a.target = '_self';
+                        a.rel = 'noopener noreferrer';
                         document.body.appendChild(a);
                         a.click();
                         
@@ -567,17 +572,17 @@ if (!$event) {
                                 document.body.removeChild(a);
                             }
                             URL.revokeObjectURL(url);
-                        }, 1000);
+                        }, 2000);
                         
-                        console.log('Generated QR code download via fetch completed');
+                        console.log('Universal QR code download via fetch completed');
                         showDownloadSuccess(filename);
                         return;
                     } else {
-                        throw new Error('Invalid generated QR code blob received');
+                        throw new Error('Invalid QR code blob received');
                     }
                 })
                 .catch(error => {
-                    console.error('Fetch API generated QR download failed:', error);
+                    console.error('Fetch API QR download failed:', error);
                     // Fall back to server QR image
                     downloadServerQrImage();
                 });
