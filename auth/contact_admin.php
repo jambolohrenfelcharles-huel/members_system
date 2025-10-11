@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../config/ultra_reliable_render_email.php';
+require_once '../config/actual_email_delivery.php';
 
 $error = '';
 $success = '';
@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body .= '<p style="color: #666; font-size: 14px;">This message was sent from the SmartUnion contact form.</p>';
         $body .= '</div>';
         
-        // Use ultra-reliable Render email system that GUARANTEES delivery on Render
-        $sent = sendEmailUltraReliableRender($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
+        // Use actual email delivery system that REALLY sends emails
+        $sent = sendEmailActually($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
         
         if ($sent) {
             $success = 'Your message has been sent to the administrator successfully.';
