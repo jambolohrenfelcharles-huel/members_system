@@ -3,20 +3,20 @@
  * Email Configuration for SmartUnion System
  * 
  * This file contains email configuration settings.
- * Modify these settings according to your server environment.
+ * Supports both local development and Render deployment via environment variables.
  */
 
-// Email Configuration
-define('EMAIL_FROM_ADDRESS', 'charlesjambo3@gmail.com');
-define('EMAIL_FROM_NAME', 'SmartUnion');
-define('EMAIL_REPLY_TO', 'charlesjambo3@gmail.com');
+// Email Configuration - Use environment variables for Render, fallback to defaults for local
+define('EMAIL_FROM_ADDRESS', $_ENV['SMTP_FROM_EMAIL'] ?? 'charlesjambo3@gmail.com');
+define('EMAIL_FROM_NAME', $_ENV['SMTP_FROM_NAME'] ?? 'SmartUnion');
+define('EMAIL_REPLY_TO', $_ENV['SMTP_FROM_EMAIL'] ?? 'charlesjambo3@gmail.com');
 
-// SMTP Configuration (for actual email delivery)
-define('SMTP_HOST', 'smtp.gmail.com'); // Gmail SMTP server
-define('SMTP_PORT', 465);
-define('SMTP_USERNAME', 'charlesjambo3@gmail.com'); // Your Gmail address
-define('SMTP_PASSWORD', 'dotf ijlz bgsl nosr'); // Your Gmail App Password (not regular password)
-define('SMTP_ENCRYPTION', 'ssl'); // 'ssl' for Gmail port 465
+// SMTP Configuration - Use environment variables for Render deployment
+define('SMTP_HOST', $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com');
+define('SMTP_PORT', (int)($_ENV['SMTP_PORT'] ?? 587)); // Use 587 for TLS, 465 for SSL
+define('SMTP_USERNAME', $_ENV['SMTP_USERNAME'] ?? 'charlesjambo3@gmail.com');
+define('SMTP_PASSWORD', $_ENV['SMTP_PASSWORD'] ?? 'dotf ijlz bgsl nosr');
+define('SMTP_ENCRYPTION', $_ENV['SMTP_ENCRYPTION'] ?? 'tls'); // Use 'tls' for port 587, 'ssl' for port 465
 
 // Alternative SMTP providers
 // Gmail: smtp.gmail.com:587 (TLS) or smtp.gmail.com:465 (SSL)
@@ -28,8 +28,9 @@ define('SMTP_ENCRYPTION', 'ssl'); // 'ssl' for Gmail port 465
 define('EMAIL_CHARSET', 'UTF-8');
 define('EMAIL_PRIORITY', 3); // 1=High, 3=Normal, 5=Low
 
-// Development Settings
-define('EMAIL_DEBUG', true); // Set to false in production
+// Development Settings - Auto-detect environment
+$isRender = isset($_ENV['RENDER']) || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'render.com') !== false);
+define('EMAIL_DEBUG', !$isRender); // Disable debug on Render to prevent output issues
 define('EMAIL_LOG_ATTEMPTS', true); // Log email attempts to error log
 define('EMAIL_SIMULATE_ON_LOCALHOST', false); // Set to true to simulate on localhost, false for real sending
 

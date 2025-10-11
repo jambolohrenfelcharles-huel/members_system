@@ -26,17 +26,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE email = ?");
             $stmt->execute([$token, $expires, $email]);
             // Send email
-            $resetLink = (isset($_SERVER['HTTPS']) ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/reset_password.php?token=$token";
+            // Generate proper URL for both local and Render environments
+            $protocol = 'https';
+            if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+                $protocol = 'https';
+            } elseif (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+                $protocol = 'https';
+            } elseif (isset($_ENV['RENDER']) || (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'render.com') !== false)) {
+                $protocol = 'https'; // Render always uses HTTPS
+            } else {
+                $protocol = 'http';
+            }
+            
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $baseUrl = $protocol . '://' . $host;
+            $resetLink = $baseUrl . '/auth/reset_password.php?token=' . $token;
+            
             $subject = 'SmartUnion Password Reset Request';
-            $message = "<p>We received a request to reset your password. Click the link below to set a new password:</p>";
-            $message .= "<p><a href='$resetLink'>$resetLink</a></p>";
-            $message .= "<p>If you did not request this, you can ignore this email.</p>";
+            $message = "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>";
+            $message .= "<h2 style='color: #333;'>Password Reset Request</h2>";
+            $message .= "<p>We received a request to reset your password for your SmartUnion account.</p>";
+            $message .= "<p>Click the button below to reset your password:</p>";
+            $message .= "<div style='text-align: center; margin: 30px 0;'>";
+            $message .= "<a href='$resetLink' style='background-color: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;'>Reset Password</a>";
+            $message .= "</div>";
+            $message .= "<p style='color: #666; font-size: 14px;'>If the button doesn't work, copy and paste this link into your browser:</p>";
+            $message .= "<p style='color: #667eea; word-break: break-all;'>$resetLink</p>";
+            $message .= "<p style='color: #666; font-size: 14px;'>This link will expire in 1 hour for security reasons.</p>";
+            $message .= "<p style='color: #666; font-size: 14px;'>If you did not request this password reset, please ignore this email.</p>";
+            $message .= "<hr style='border: none; border-top: 1px solid #eee; margin: 30px 0;'>";
+            $message .= "<p style='color: #999; font-size: 12px;'>This email was sent from SmartUnion System</p>";
+            $message .= "</div>";
+            
             // Use your SMTP helper
             require_once '../config/phpmailer_helper.php';
-            if (sendMailPHPMailer($email, $subject, $message)) {
-                $success = 'A password reset link has been sent to your email.';
+            
+            // Suppress output to prevent header issues
+            ob_start();
+            $emailSent = sendMailPHPMailer($email, $subject, $message);
+            ob_end_clean();
+            
+            if ($emailSent) {
+                $success = 'A password reset link has been sent to your email. Please check your inbox and spam folder.';
             } else {
-                $error = 'Failed to send email. Please try again later.';
+                $error = 'Failed to send email. Please check your email configuration or try again later.';
+                // Log the error for debugging
+                error_log("Failed to send password reset email to: $email");
             }
         } else {
             $error = 'No account found with that email.';

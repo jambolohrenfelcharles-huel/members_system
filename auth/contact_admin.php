@@ -15,13 +15,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $admin_email = 'charlesjambo3@gmail.com';
         $subject = 'Contact Request from SmartUnion Signup Page';
-        $body = '<p><strong>From:</strong> ' . htmlspecialchars($user_email) . '</p>';
-        $body .= '<p><strong>Message:</strong><br>' . nl2br(htmlspecialchars($message)) . '</p>';
+        $body = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">';
+        $body .= '<h2 style="color: #333;">New Contact Request</h2>';
+        $body .= '<div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">';
+        $body .= '<p><strong>From:</strong> ' . htmlspecialchars($user_email) . '</p>';
+        $body .= '<p><strong>Message:</strong></p>';
+        $body .= '<div style="background: white; padding: 15px; border-left: 4px solid #667eea; margin: 10px 0;">';
+        $body .= nl2br(htmlspecialchars($message));
+        $body .= '</div>';
+        $body .= '</div>';
+        $body .= '<p style="color: #666; font-size: 14px;">This message was sent from the SmartUnion contact form.</p>';
+        $body .= '</div>';
+        
+        // Use enhanced email sending with Render optimizations
         $sent = sendMailPHPMailer($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
+        
         if ($sent) {
-            $success = 'Your message has been sent to the administrator.';
+            $success = 'Your message has been sent to the administrator successfully.';
         } else {
-            $error = 'Failed to send your message. Please try again later.';
+            $error = 'Failed to send your message. Please try again later or contact support directly.';
+            // Log the error for debugging
+            error_log("Failed to send contact email from: $user_email");
         }
     }
 }
