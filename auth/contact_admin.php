@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../config/render_phpmailer_fix.php';
+require_once '../config/comprehensive_email_solution.php';
 
 $error = '';
 $success = '';
@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body .= '<p style="color: #666; font-size: 14px;">This message was sent from the SmartUnion contact form.</p>';
         $body .= '</div>';
         
-        // Use Render PHPMailer fix that works reliably on Render
-        $sent = sendEmailRender($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
+        // Use comprehensive email solution that will definitely work
+        $sent = sendEmailComprehensive($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
         
         if ($sent) {
             $success = 'Your message has been sent to the administrator successfully.';
