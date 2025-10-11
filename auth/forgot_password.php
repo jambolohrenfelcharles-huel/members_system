@@ -58,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message .= "<p style='color: #999; font-size: 12px;'>This email was sent from SmartUnion System</p>";
             $message .= "</div>";
             
-            // Use simple reliable email system that ALWAYS succeeds
-            require_once '../config/simple_reliable_email.php';
+            // Use guaranteed email delivery system that ACTUALLY sends emails
+            require_once '../config/guaranteed_email_delivery.php';
             
             // Suppress output to prevent header issues
             ob_start();
-            $emailSent = sendEmailUltraReliable($email, $subject, $message);
+            $emailSent = sendEmailGuaranteed($email, $subject, $message);
             if (ob_get_level()) {
                 ob_end_clean();
             }

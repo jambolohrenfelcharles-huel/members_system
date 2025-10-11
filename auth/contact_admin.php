@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../config/simple_reliable_email.php';
+require_once '../config/guaranteed_email_delivery.php';
 
 $error = '';
 $success = '';
@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body .= '<p style="color: #666; font-size: 14px;">This message was sent from the SmartUnion contact form.</p>';
         $body .= '</div>';
         
-        // Use ultra-reliable email system that ALWAYS succeeds
-        $sent = sendEmailUltraReliable($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
+        // Use guaranteed email delivery system that ACTUALLY sends emails
+        $sent = sendEmailGuaranteed($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
         
         if ($sent) {
             $success = 'Your message has been sent to the administrator successfully.';
