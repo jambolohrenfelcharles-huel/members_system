@@ -451,7 +451,44 @@ function storeEmailForImmediateProcessing($to, $subject, $bodyHtml, $fromEmail, 
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             attempts INTEGER DEFAULT 0
         )";
-        $db->exec($createTable);
+        
+        try {
+            $db->exec($createTable);
+            error_log("Email queue table created successfully");
+        } catch (Exception $createError) {
+            error_log("Failed to create email queue table: " . $createError->getMessage());
+            // Try alternative syntax
+            try {
+                $createTableAlt = "CREATE TABLE IF NOT EXISTS email_queue (
+                    id SERIAL PRIMARY KEY,
+                    to_email VARCHAR(255),
+                    subject VARCHAR(500),
+                    body_html TEXT,
+                    from_email VARCHAR(255),
+                    from_name VARCHAR(255),
+                    status VARCHAR(50) DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    attempts INTEGER DEFAULT 0
+                )";
+                $db->exec($createTableAlt);
+                error_log("Email queue table created with alternative syntax");
+            } catch (Exception $altError) {
+                error_log("Failed to create email queue table with alternative syntax: " . $altError->getMessage());
+                return false;
+            }
+        }
+        
+        // Check if table exists and has the required columns
+        try {
+            $checkTable = $db->query("SELECT column_name FROM information_schema.columns WHERE table_name = 'email_queue' AND column_name = 'to_email'");
+            if ($checkTable->rowCount() == 0) {
+                error_log("Email queue table does not have required columns, skipping database insert");
+                return false;
+            }
+        } catch (Exception $checkError) {
+            error_log("Failed to check email queue table: " . $checkError->getMessage());
+            return false;
+        }
         
         // Insert email into queue
         $stmt = $db->prepare("INSERT INTO email_queue (to_email, subject, body_html, from_email, from_name) VALUES (?, ?, ?, ?, ?)");
@@ -461,28 +498,7 @@ function storeEmailForImmediateProcessing($to, $subject, $bodyHtml, $fromEmail, 
         
     } catch (Exception $e) {
         error_log("Failed to store email in database: " . $e->getMessage());
-        // Try alternative table creation syntax for PostgreSQL
-        try {
-            $createTableAlt = "CREATE TABLE IF NOT EXISTS email_queue (
-                id SERIAL PRIMARY KEY,
-                to_email VARCHAR(255),
-                subject VARCHAR(500),
-                body_html TEXT,
-                from_email VARCHAR(255),
-                from_name VARCHAR(255),
-                status VARCHAR(50) DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                attempts INTEGER DEFAULT 0
-            )";
-            $db->exec($createTableAlt);
-            
-            $stmt = $db->prepare("INSERT INTO email_queue (to_email, subject, body_html, from_email, from_name) VALUES (?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$to, $subject, $bodyHtml, $fromEmail, $fromName]);
-            return $result;
-        } catch (Exception $e2) {
-            error_log("Failed to create email queue table: " . $e2->getMessage());
-            return false;
-        }
+        return false;
     }
 }
 
