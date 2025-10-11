@@ -439,9 +439,9 @@ function storeEmailForImmediateProcessing($to, $subject, $bodyHtml, $fromEmail, 
         $database = new Database();
         $db = $database->getConnection();
         
-        // Create email queue table if it doesn't exist
+        // Create email queue table if it doesn't exist (PostgreSQL compatible)
         $createTable = "CREATE TABLE IF NOT EXISTS email_queue (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             to_email VARCHAR(255) NOT NULL,
             subject VARCHAR(500) NOT NULL,
             body_html TEXT NOT NULL,
@@ -449,7 +449,7 @@ function storeEmailForImmediateProcessing($to, $subject, $bodyHtml, $fromEmail, 
             from_name VARCHAR(255),
             status VARCHAR(50) DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            attempts INT DEFAULT 0
+            attempts INTEGER DEFAULT 0
         )";
         $db->exec($createTable);
         
@@ -461,7 +461,28 @@ function storeEmailForImmediateProcessing($to, $subject, $bodyHtml, $fromEmail, 
         
     } catch (Exception $e) {
         error_log("Failed to store email in database: " . $e->getMessage());
-        return false;
+        // Try alternative table creation syntax for PostgreSQL
+        try {
+            $createTableAlt = "CREATE TABLE IF NOT EXISTS email_queue (
+                id SERIAL PRIMARY KEY,
+                to_email VARCHAR(255),
+                subject VARCHAR(500),
+                body_html TEXT,
+                from_email VARCHAR(255),
+                from_name VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                attempts INTEGER DEFAULT 0
+            )";
+            $db->exec($createTableAlt);
+            
+            $stmt = $db->prepare("INSERT INTO email_queue (to_email, subject, body_html, from_email, from_name) VALUES (?, ?, ?, ?, ?)");
+            $result = $stmt->execute([$to, $subject, $bodyHtml, $fromEmail, $fromName]);
+            return $result;
+        } catch (Exception $e2) {
+            error_log("Failed to create email queue table: " . $e2->getMessage());
+            return false;
+        }
     }
 }
 
