@@ -114,12 +114,16 @@ function tryPHPMailerSimple($to, $subject, $bodyHtml, $smtpUser, $smtpPass, $fro
         // Suppress all output
         ob_start();
         $result = $mail->send();
-        ob_end_clean();
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
         
         return $result;
         
     } catch (Exception $e) {
-        ob_end_clean(); // Clean up any output
+        if (ob_get_level()) {
+            ob_end_clean(); // Clean up any output
+        }
         error_log("PHPMailer simple failed: " . $mail->ErrorInfo);
         return false;
     }

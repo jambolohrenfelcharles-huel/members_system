@@ -64,7 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Suppress output to prevent header issues
             ob_start();
             $emailSent = sendEmailUltraReliable($email, $subject, $message);
-            ob_end_clean();
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
             
             if ($emailSent) {
                 $success = 'A password reset link has been sent to your email. Please check your inbox and spam folder.';
