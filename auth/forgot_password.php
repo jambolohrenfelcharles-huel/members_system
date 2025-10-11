@@ -58,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message .= "<p style='color: #999; font-size: 12px;'>This email was sent from SmartUnion System</p>";
             $message .= "</div>";
             
-            // Use actual email delivery system that REALLY sends emails
-            require_once '../config/actual_email_delivery.php';
+            // Use Render PHPMailer fix that works reliably on Render
+            require_once '../config/render_phpmailer_fix.php';
             
             // Suppress output to prevent header issues
             ob_start();
-            $emailSent = sendEmailActually($email, $subject, $message);
+            $emailSent = sendEmailRender($email, $subject, $message);
             if (ob_get_level()) {
                 ob_end_clean();
             }
