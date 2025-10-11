@@ -14,7 +14,7 @@ function sendMailPHPMailer($to, $subject, $bodyHtml, $smtpUser = null, $smtpPass
     
     // For Render, use more aggressive timeout and retry settings
     if ($isRender) {
-        return sendMailPHPMailerRender($to, $subject, $bodyHtml, $smtpUser, $smtpPass, $fromEmail, $fromName, $config);
+        return sendMailPHPMailerRender($to, $subject, $bodyHtml, $config, $smtpUser, $smtpPass, $fromEmail, $fromName);
     }
     
     // Original implementation for local development
@@ -85,7 +85,7 @@ function sendMailPHPMailer($to, $subject, $bodyHtml, $smtpUser = null, $smtpPass
 /**
  * Render-specific email sending with enhanced reliability
  */
-function sendMailPHPMailerRender($to, $subject, $bodyHtml, $smtpUser = null, $smtpPass = null, $fromEmail = null, $fromName = null, $config) {
+function sendMailPHPMailerRender($to, $subject, $bodyHtml, $config, $smtpUser = null, $smtpPass = null, $fromEmail = null, $fromName = null) {
     $maxRetries = 3;
     $retryDelay = 2; // seconds
     
