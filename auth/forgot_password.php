@@ -58,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message .= "<p style='color: #999; font-size: 12px;'>This email was sent from SmartUnion System</p>";
             $message .= "</div>";
             
-            // Use your SMTP helper
-            require_once '../config/phpmailer_helper.php';
+            // Use enhanced email helper with multiple fallback methods
+            require_once '../config/enhanced_email_helper.php';
             
             // Suppress output to prevent header issues
             ob_start();
-            $emailSent = sendMailPHPMailer($email, $subject, $message);
+            $emailSent = sendEmailReliable($email, $subject, $message);
             ob_end_clean();
             
             if ($emailSent) {

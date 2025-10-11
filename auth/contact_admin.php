@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once '../config/phpmailer_helper.php';
+require_once '../config/enhanced_email_helper.php';
 
 $error = '';
 $success = '';
@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body .= '<p style="color: #666; font-size: 14px;">This message was sent from the SmartUnion contact form.</p>';
         $body .= '</div>';
         
-        // Use enhanced email sending with Render optimizations
-        $sent = sendMailPHPMailer($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
+        // Use enhanced email sending with multiple fallback methods
+        $sent = sendEmailReliable($admin_email, $subject, $body, null, null, $user_email, 'SmartUnion User');
         
         if ($sent) {
             $success = 'Your message has been sent to the administrator successfully.';
