@@ -213,3 +213,4 @@ echo "<p>Configure SendGrid API key or Gmail SMTP settings to enable email sendi
 echo "<p><strong>If you see SUCCESS above, check your email inbox!</strong></p>";
 echo "</div>";
 ?>
+

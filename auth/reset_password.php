@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../config/database.php';
-require_once '../config/phpmailer_helper.php';
+require_once '../config/direct_email_solution.php';
 
 $error = '';
 $success = '';

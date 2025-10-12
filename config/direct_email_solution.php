@@ -436,3 +436,4 @@ function sendEmailComprehensive($to, $subject, $bodyHtml, $smtpUser = null, $smt
     return sendEmailDirect($to, $subject, $bodyHtml, $smtpUser, $smtpPass, $fromEmail, $fromName);
 }
 ?>
+
