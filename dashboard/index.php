@@ -290,7 +290,7 @@ for ($m = 1; $m <= 12; $m++) {
                                                     <i class="fas fa-calendar-alt text-success"></i>
                                                 </div>
                                                 <div class="flex-grow-1 ms-3">
-                                                    <h6 class="mb-1"><?php echo htmlspecialchars($event['name']); ?></h6>
+                                                    <h6 class="mb-1"><?php echo htmlspecialchars($event['title']); ?></h6>
                                                     <small class="text-muted">
                                                         <?php echo date('M d, Y', strtotime($event['event_date'])); ?> - 
                                                         <?php echo ucfirst($event['status']); ?>
