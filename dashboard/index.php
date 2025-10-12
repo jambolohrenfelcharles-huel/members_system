@@ -85,18 +85,20 @@ for ($m = 1; $m <= 12; $m++) {
     // Members by created_at month - use appropriate table and date function
     if ($db_type === 'postgresql') {
         $stmt = $db->prepare("SELECT COUNT(*) AS total FROM members WHERE TO_CHAR(created_at, 'YYYY-MM') = ?");
+        $stmt->execute([$monthKey]);
     } else {
-    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM $members_table WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)");
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM $members_table WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)");
+        $stmt->execute();
     }
-    $stmt->execute([$monthKey]);
     $memberTrend[] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
     // Events by event_date month - use appropriate date function
     if ($db_type === 'postgresql') {
         $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE TO_CHAR(event_date, 'YYYY-MM') = ?");
+        $stmt->execute([$monthKey]);
     } else {
-    $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE EXTRACT(YEAR FROM event_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM event_date) = EXTRACT(MONTH FROM CURRENT_DATE)");
+        $stmt = $db->prepare("SELECT COUNT(*) AS total FROM events WHERE EXTRACT(YEAR FROM event_date) = EXTRACT(YEAR FROM CURRENT_DATE) AND EXTRACT(MONTH FROM event_date) = EXTRACT(MONTH FROM CURRENT_DATE)");
+        $stmt->execute();
     }
-    $stmt->execute([$monthKey]);
     $eventTrend[] = (int)($stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0);
 }
 
